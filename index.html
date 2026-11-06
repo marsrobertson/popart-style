@@ -637,13 +637,28 @@ small { color: var(--muted); font-size: 13px; }
       picks.unshift({ url, name });
       if (picks.length > 30) URL.revokeObjectURL(picks.pop().url);
       renderPicks();
-      try {
-        const a = document.createElement('a');
-        a.href = url; a.download = name;
-        document.body.appendChild(a); a.click(); a.remove();
-      } catch (e) { /* the modal still shows the image */ }
       openModal(picks[0], 'Saved');
+      download(picks[0], blob);
     }, 'image/png');
+  }
+  // Inside the claude.ai viewer, files go through its downloads capability; elsewhere a plain link click works.
+  let downloadsCap = null;
+  if (window.claude && typeof window.claude.use === 'function') {
+    window.claude.use('downloads').then(d => { downloadsCap = d; }, () => {});
+  }
+  async function download(p, blob) {
+    if (downloadsCap) {
+      try {
+        const data = blob || await (await fetch(p.url)).blob();
+        await downloadsCap.save({ filename: p.name, data });
+      } catch (e) { /* declined or unavailable: the image stays on screen to save by hand */ }
+      return;
+    }
+    try {
+      const a = document.createElement('a');
+      a.href = p.url; a.download = p.name;
+      document.body.appendChild(a); a.click(); a.remove();
+    } catch (e) { /* the modal still shows the image */ }
   }
   function renderPicks() {
     els.picks.hidden = !picks.length;
@@ -718,6 +733,12 @@ small { color: var(--muted); font-size: 13px; }
   els.back.addEventListener('click', back);
   els.save.addEventListener('click', save);
   els.close.addEventListener('click', closeModal);
+  els.dl.addEventListener('click', e => {
+    if (!downloadsCap) return;
+    e.preventDefault();
+    const p = picks.find(x => x.url === els.dl.href);
+    if (p) download(p);
+  });
   els.modal.addEventListener('click', e => { if (e.target === els.modal) closeModal(); });
 
   canvas.addEventListener('click', e => {
