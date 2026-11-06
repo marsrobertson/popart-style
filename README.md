@@ -12,6 +12,10 @@ One self-contained page (`index.html`): open it in a browser, or serve the repo 
 - **Palette**: All, Warhol (hot screen-print colours), Riso (risograph-style inks on off-white paper), Neon.
 - **Tiles**: 2×2 or 3×3 tiles per artwork. **Texture**: none, film grain, or Ben-Day dots.
 - **Compare**: show 1, 2×2, 3×3, 4×4 or 5×5 artworks at once (slider, or keys `1`–`5`). Tiles and Compare are independent, so nine 2×2 artworks or four 3×3 ones both work. Click the best artwork to keep working on it. **Back** returns to the wall. Saving while the wall is showing saves the whole wall as one poster.
+- **On the wall**, hover an artwork for its own toolbar: **re-roll** just that one, **lock** it (Random keeps it), **zoom** in, **edit** it (opens it on its own, where you can re-roll single tiles), or **Buy**. Clicking an artwork zooms in; the zoom view has Buy now, Edit, Re-roll, Lock and Save, and ← → browse the wall. On small artworks (5×5 walls, phones) the toolbar hides and a tap zooms in.
+- **Buy now** (main bar) buys the current artwork, or the whole wall as one print while the wall is showing. Pick a size (30, 50 or 70 cm square).
+  - No payment provider is connected yet. Set `SHOP.checkoutUrl` in `index.html` to a Stripe Payment Link or print-shop URL and Buy sends people there.
+  - Until then, on claude.ai, Buy **reserves** the print: the exact artwork (its recipe plus a thumbnail) and size go to `orders/<viewer id>/items`, which only the page owner (and each buyer for their own) can read. Opened as a plain file, Buy offers the PNG instead.
 - **Locks**: hover a tile and click the lock. Random (and every artwork on the wall) keeps locked tiles.
 - **Taste**: every picked or saved artwork records its background/text colour pairs, and Random favours those pairs (weight 1 + 3·√count, so nothing ever gets ruled out). Saved walls don't count. Untick "Favour colour pairs" to roll purely at random.
 

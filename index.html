@@ -87,21 +87,40 @@ body {
 .hit.locked .lock { background: var(--pop); }
 .lock:focus-visible { outline: 3px solid var(--hot); outline-offset: 2px; }
 .lock.nudge { animation: nudge 0.32s ease; }
-.hit.cand { position: absolute; border: 0; padding: 0; background: transparent; }
+.hit.cand { position: absolute; container-type: size; cursor: zoom-in; }
 .hit.cand:hover, .hit.cand:focus-visible { outline: none; box-shadow: inset 0 0 0 4px var(--hot), inset 0 0 0 7px var(--paper); }
-.hit.cand::after {
-  content: "Pick"; position: absolute; left: 6px; bottom: 6px; opacity: 0;
-  font: 13px var(--display); letter-spacing: 0.06em; text-transform: uppercase;
-  background: var(--ink); color: var(--pop); padding: 2px 7px;
+.hit.cand.locked { box-shadow: inset 0 0 0 4px var(--pop), inset 0 0 0 7px var(--ink); }
+.tools { position: absolute; top: 6px; right: 6px; display: flex; gap: 4px; opacity: 0; transition: opacity 0.12s ease; }
+.tool {
+  width: 30px; height: 30px; padding: 5px; cursor: pointer;
+  border: 2px solid var(--ink); background: var(--paper); color: var(--ink); box-shadow: 2px 2px 0 var(--ink);
 }
-.hit.cand:hover::after, .hit.cand:focus-visible::after { opacity: 1; }
+.tool svg { width: 100%; height: 100%; display: block; }
+.tool[aria-pressed="true"] { background: var(--pop); }
+.tool:focus-visible, .buy-pill:focus-visible { outline: 3px solid var(--hot); outline-offset: 2px; }
+.buy-pill {
+  position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%); opacity: 0; white-space: nowrap;
+  font-family: var(--display); font-size: 17px; letter-spacing: 0.06em; text-transform: uppercase;
+  padding: 6px 18px; cursor: pointer; transition: opacity 0.12s ease;
+  border: 2px solid var(--ink); background: var(--hot); color: var(--paper); box-shadow: 3px 3px 0 var(--ink);
+}
+.hit.cand:hover .tools, .hit.cand:focus-within .tools,
+.hit.cand:hover .buy-pill, .hit.cand:focus-within .buy-pill { opacity: 1; }
+.cand-badge {
+  position: absolute; top: 6px; left: 6px; width: 24px; height: 24px; padding: 3px;
+  background: var(--pop); color: var(--ink); border: 2px solid var(--ink);
+}
+.cand-badge svg { width: 100%; height: 100%; display: block; }
+@container (max-width: 159px) { .tools, .buy-pill { display: none; } }
+@media (hover: none) { .tools, .buy-pill { display: none; } }
 .ticks { display: flex; justify-content: space-between; font: 800 12px var(--body); color: var(--muted); margin-top: -4px; }
 @keyframes nudge { 25% { transform: rotate(-14deg); } 75% { transform: rotate(14deg); } }
 @media (hover: none) { .lock { opacity: 0.85; } }
 canvas { display: block; width: 100%; height: 100%; }
 .hits, .hit { touch-action: manipulation; }
 
-.actions { display: grid; grid-template-columns: 1fr 1.8fr 1fr; gap: 12px; }
+.actions { display: grid; grid-template-columns: 1fr 1.6fr 1fr 1.3fr; gap: 12px; }
+@media (max-width: 560px) { .actions { grid-template-columns: 1fr 1.6fr 1fr; } #buy-main { grid-column: 1 / -1; } }
 .btn {
   font-family: var(--display); font-weight: 400; font-size: 20px; letter-spacing: 0.05em;
   text-transform: uppercase; text-decoration: none; text-align: center; line-height: 1.1;
@@ -190,6 +209,25 @@ small { color: var(--muted); font-size: 13px; }
 .sheet .row { display: flex; gap: 12px; flex-wrap: wrap; }
 .sheet .row .btn { flex: 1 1 140px; }
 .sheet .hint { text-align: left; }
+.sheet.wide { width: min(720px, 100%); }
+.sheet-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.sheet-head .btn { font-size: 16px; padding: 8px 12px; }
+.zoom-stage { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 8px; align-items: center; }
+#zoom-art {
+  display: block; justify-self: center; width: min(100%, calc(100vh - 320px)); min-width: 200px; max-width: 100%;
+  height: auto; aspect-ratio: 1; border: 3px solid var(--ink);
+}
+.nav {
+  font: 30px/1 var(--display); width: 40px; height: 64px; cursor: pointer;
+  border: 3px solid var(--ink); background: var(--paper); color: var(--ink); box-shadow: 3px 3px 0 var(--ink);
+}
+.nav:focus-visible { outline: 3px solid var(--hot); outline-offset: 2px; }
+.btn.buy-big { font-size: 30px; width: 100%; padding-block: 12px; }
+.row4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.row4 .btn { font-size: 17px; padding-inline: 6px; }
+@media (max-width: 480px) { .row4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } .nav { width: 32px; } }
+#buy-img { width: min(100%, 320px); align-self: center; }
+.buy-msg { margin: 0; font-weight: 600; }
 
 .taste-row { display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
 .linkbtn {
@@ -218,7 +256,8 @@ small { color: var(--muted); font-size: 13px; }
       <div class="actions">
         <button id="back" class="btn" type="button" disabled>Back</button>
         <button id="random" class="btn big" type="button">Random</button>
-        <button id="save" class="btn hot" type="button">Save</button>
+        <button id="save" class="btn" type="button">Save</button>
+        <button id="buy-main" class="btn hot" type="button">Buy now</button>
       </div>
       <p class="hint"><kbd>Space</kbd> random &nbsp;·&nbsp; click a tile to re-roll it &nbsp;·&nbsp; lock icon keeps a tile &nbsp;·&nbsp; <kbd>1</kbd>–<kbd>5</kbd> compare &nbsp;·&nbsp; <kbd>Z</kbd> back &nbsp;·&nbsp; <kbd>S</kbd> save</p>
       <div class="picks" id="picks" hidden>
@@ -295,7 +334,7 @@ small { color: var(--muted); font-size: 13px; }
       <label class="field"><span>Compare <output id="wall-out" for="wall">1 artwork</output></span>
         <input type="range" id="wall" min="1" max="5" step="1" value="1"></label>
       <div class="ticks" aria-hidden="true"><span>1</span><span>2×2</span><span>3×3</span><span>4×4</span><span>5×5</span></div>
-      <small>Show a wall of artworks, then click the best one to keep working on it. Locked tiles stay in every artwork.</small>
+      <small>Show a wall of artworks. Hover one to re-roll, lock, zoom, edit or buy it; click it to zoom in. Locked tiles stay in every artwork.</small>
     </div>
 
     <hr class="rule">
@@ -310,6 +349,48 @@ small { color: var(--muted); font-size: 13px; }
     </div>
   </aside>
 </main>
+
+<div class="modal" id="zoom" hidden>
+  <div class="sheet wide" role="dialog" aria-modal="true" aria-labelledby="zoom-title">
+    <div class="sheet-head">
+      <h2 id="zoom-title">Artwork 1 of 4</h2>
+      <button id="zoom-close" class="btn" type="button">Close</button>
+    </div>
+    <div class="zoom-stage">
+      <button id="zoom-prev" class="nav" type="button" aria-label="Previous artwork">‹</button>
+      <canvas id="zoom-art" width="1200" height="1200" role="img" aria-label="Zoomed artwork"></canvas>
+      <button id="zoom-next" class="nav" type="button" aria-label="Next artwork">›</button>
+    </div>
+    <button id="zoom-buy" class="btn hot buy-big" type="button">Buy now</button>
+    <div class="row4">
+      <button id="zoom-edit" class="btn" type="button">Edit</button>
+      <button id="zoom-roll" class="btn" type="button">Re-roll</button>
+      <button id="zoom-lock" class="btn" type="button" aria-pressed="false">Lock</button>
+      <button id="zoom-save" class="btn" type="button">Save</button>
+    </div>
+    <p class="hint"><kbd>←</kbd> <kbd>→</kbd> browse the wall &nbsp;·&nbsp; <kbd>Esc</kbd> close</p>
+  </div>
+</div>
+
+<div class="modal" id="buy" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="buy-title">
+    <h2 id="buy-title">Buy this print</h2>
+    <img id="buy-img" alt="The artwork you are buying">
+    <span class="label">Size</span>
+    <div class="seg" role="radiogroup" aria-label="Print size">
+      <input type="radio" name="size" id="s30" value="30x30cm"><label for="s30">30×30 cm</label>
+      <input type="radio" name="size" id="s50" value="50x50cm" checked><label for="s50">50×50 cm</label>
+      <input type="radio" name="size" id="s70" value="70x70cm"><label for="s70">70×70 cm</label>
+    </div>
+    <p class="buy-msg" id="buy-msg">Checkout isn't open yet. Reserve this print and this exact artwork goes into the print queue.</p>
+    <div class="row">
+      <button id="buy-go" class="btn hot" type="button">Reserve this print</button>
+      <a id="buy-link" class="btn hot" href="#" target="_blank" rel="noopener" hidden>Go to checkout</a>
+      <button id="buy-save" class="btn" type="button">Save PNG</button>
+      <button id="buy-close" class="btn" type="button">Not now</button>
+    </div>
+  </div>
+</div>
 
 <div class="modal" id="modal" hidden>
   <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="modal-title">
@@ -445,19 +526,28 @@ small { color: var(--muted); font-size: 13px; }
     top: $('t-top'), mid: $('t-mid'), bot: $('t-bot'), swap: $('t-swap'),
     file: $('file'), fileName: $('file-name'), detail: $('detail'), detailOut: $('detail-out'),
     url: $('q-url'), cap: $('q-cap'), hits: $('hits'),
-    wall: $('wall'), wallOut: $('wall-out'), modalSize: $('modal-size'),
+    wall: $('wall'), wallOut: $('wall-out'), modalSize: $('modal-size'), buyMain: $('buy-main'),
+    zoom: $('zoom'), zoomArt: $('zoom-art'), zoomTitle: $('zoom-title'), zoomLock: $('zoom-lock'), zoomRoll: $('zoom-roll'),
+    buy: $('buy'), buyImg: $('buy-img'), buyTitle: $('buy-title'), buyMsg: $('buy-msg'), buyGo: $('buy-go'), buyLink: $('buy-link'),
     tasteOn: $('taste-on'), tasteCount: $('taste-count'), tasteReset: $('taste-reset'),
     back: $('back'), random: $('random'), save: $('save'),
     picks: $('picks'), strip: $('strip'), frame: $('frame'),
     modal: $('modal'), modalImg: $('modal-img'), modalTitle: $('modal-title'), dl: $('dl'), close: $('close'),
   };
   const canvas = $('art');
-  const ctx = canvas.getContext('2d');
+  // every draw function paints into `ctx`; withCtx points it at another canvas (zoom view, exports) for a moment
+  const mainCtx = canvas.getContext('2d');
+  let ctx = mainCtx;
+  function withCtx(c, fn) { const prev = ctx; ctx = c; try { fn(); } finally { ctx = prev; } }
+
+  // Real checkout: paste a Stripe Payment Link or print-shop URL here and Buy sends people to it.
+  // Left empty, Buy reserves the artwork in the owner-only print queue instead.
+  const SHOP = { checkoutUrl: '' };
   const SIZE = 1800;
   const BIG_FONT = 'Anton, Impact, "Arial Narrow Bold", sans-serif';
   const SMALL_FONT = 'Archivo, "Helvetica Neue", Arial, sans-serif';
 
-  const state = { mode: 'text', grid: 3, texture: 'grain', preset: 'all', wall: 1, tiles: [], cands: [], history: [], locked: new Set() };
+  const state = { mode: 'text', grid: 3, texture: 'grain', preset: 'all', wall: 1, tiles: [], cands: [], history: [], locked: new Set(), candLocked: new Set() };
   const picks = [];
 
   function freshTiles() {
@@ -479,7 +569,10 @@ small { color: var(--muted); font-size: 13px; }
   // all = also replace the current artwork while the wall is showing (palette or mode changes)
   function reroll(all = false) {
     if (all || state.wall === 1) state.tiles = freshTiles();
-    if (state.wall > 1) state.cands = Array.from({ length: state.wall * state.wall }, () => freshTiles());
+    if (state.wall > 1) {
+      state.cands = Array.from({ length: state.wall * state.wall },
+        (_, i) => (state.candLocked.has(i) && state.cands[i]) ? state.cands[i] : freshTiles());
+    }
   }
   function randomize() { snapshot(); reroll(); render(); }
   function back() {
@@ -495,6 +588,7 @@ small { color: var(--muted); font-size: 13px; }
   }
   function syncWall() {
     const k = state.wall;
+    syncBuyLabel();
     els.wall.value = String(k);
     els.wallOut.textContent = k === 1 ? '1 artwork' : `${k}×${k} = ${k * k} artworks`;
   }
@@ -514,7 +608,7 @@ small { color: var(--muted); font-size: 13px; }
     snapshot();
     state.tiles = copyTiles(state.cands[a]);
     state.wall = 1;
-    recordChoice();
+    recordChoice(state.tiles);
     syncWall(); renderHits(); render();
   }
   function rerollTile(i) {
@@ -531,23 +625,19 @@ small { color: var(--muted); font-size: 13px; }
   }
 
   // ---------- drawing ----------
-  function layout() {
-    const n = state.grid, k = state.wall;
-    if (k === 1) return { k, n, T: SIZE / n, cand: SIZE, gap: 0, size: SIZE };
-    const gap = 0; // artworks butt up against each other, like one big print
-    const T = Math.floor((SIZE - gap * (k - 1)) / (k * n)); // whole-pixel tiles keep edges crisp
-    const cand = T * n;
-    return { k, n, T, cand, gap, size: cand * k + gap * (k - 1) };
+  // Paint k×k artworks edge to edge onto canvas c, in whole-pixel tiles so edges stay crisp.
+  function paint(c, sets, k, size) {
+    const n = state.grid, T = Math.floor(size / (k * n)), cand = T * n, total = cand * k;
+    if (c.width !== total) c.width = c.height = total;
+    withCtx(c.getContext('2d'), () => {
+      ctx.fillStyle = WHITE;
+      ctx.fillRect(0, 0, total, total);
+      for (let a = 0; a < k * k; a++) drawArt(sets[a], (a % k) * cand, Math.floor(a / k) * cand, n, T);
+    });
   }
   function render() {
-    const L = layout();
-    if (canvas.width !== L.size) canvas.width = canvas.height = L.size;
-    ctx.fillStyle = WHITE;
-    ctx.fillRect(0, 0, L.size, L.size);
-    const sets = L.k === 1 ? [state.tiles] : state.cands;
-    for (let a = 0; a < L.k * L.k; a++) {
-      drawArt(sets[a], (a % L.k) * (L.cand + L.gap), Math.floor(a / L.k) * (L.cand + L.gap), L.n, L.T);
-    }
+    paint(canvas, state.wall === 1 ? [state.tiles] : state.cands, state.wall, SIZE);
+    if (!els.zoom.hidden) renderZoom();
   }
   function drawArt(tiles, ox, oy, n, T) {
     ctx.textBaseline = 'alphabetic';
@@ -586,9 +676,10 @@ small { color: var(--muted); font-size: 13px; }
     ctx.fill();
   }
 
-  let grainPattern = null;
+  let grainTile = null;
+  const grainPatterns = new WeakMap();
   function drawGrain(x, y, size) {
-    if (!grainPattern) {
+    if (!grainTile) {
       const g = document.createElement('canvas');
       g.width = g.height = 256;
       const gx = g.getContext('2d');
@@ -598,12 +689,13 @@ small { color: var(--muted); font-size: 13px; }
         d.data[k] = d.data[k + 1] = d.data[k + 2] = v; d.data[k + 3] = 255;
       }
       gx.putImageData(d, 0, 0);
-      grainPattern = ctx.createPattern(g, 'repeat');
+      grainTile = g;
     }
+    if (!grainPatterns.has(ctx)) grainPatterns.set(ctx, ctx.createPattern(grainTile, 'repeat'));
     ctx.save();
     ctx.globalAlpha = 0.1;
     ctx.globalCompositeOperation = 'overlay';
-    ctx.fillStyle = grainPattern;
+    ctx.fillStyle = grainPatterns.get(ctx);
     ctx.fillRect(x, y, size, size);
     ctx.restore();
   }
@@ -794,19 +886,28 @@ small { color: var(--muted); font-size: 13px; }
   // ---------- save ----------
   // ISO 8601 basic format in UTC, e.g. 20261106T143005Z (no colons, which file systems reject)
   const stamp = () => new Date().toISOString().replace(/\.\d+Z$/, 'Z').replace(/[-:]/g, '');
-  function save() {
-    const wall = state.wall > 1;
-    if (!wall) recordChoice(); // a saved wall is a poster, not a vote for each artwork on it
-    canvas.toBlob(blob => {
+  // Save a canvas as PNG. `tiles` = the artwork it shows (counts toward taste); null for a wall poster.
+  function saveCanvas(c, tiles, title) {
+    if (tiles) recordChoice(tiles);
+    c.toBlob(blob => {
       if (!blob) return;
       const url = URL.createObjectURL(blob);
       const name = `popart-marsita-${stamp()}.png`;
-      picks.unshift({ url, name, w: canvas.width, h: canvas.height });
+      picks.unshift({ url, name, w: c.width, h: c.height });
       if (picks.length > 30) URL.revokeObjectURL(picks.pop().url);
       renderPicks();
-      openModal(picks[0], wall ? 'Saved wall' : 'Saved');
+      openModal(picks[0], title);
       download(picks[0], blob);
     }, 'image/png');
+  }
+  function save() {
+    if (state.wall > 1) saveCanvas(canvas, null, 'Saved wall'); // a wall is a poster, not a vote for each artwork
+    else saveCanvas(canvas, state.tiles, 'Saved');
+  }
+  function artworkCanvas(tiles, size = SIZE) {
+    const c = document.createElement('canvas');
+    paint(c, [tiles], 1, size);
+    return c;
   }
   // Inside the claude.ai viewer, files go through its downloads capability; elsewhere a plain link click works.
   let downloadsCap = null;
@@ -873,6 +974,7 @@ small { color: var(--muted); font-size: 13px; }
     if (enteringQr) {
       // a locked tile only survives the switch if its colours still scan
       state.locked.forEach(i => { const t = state.tiles[i]; if (!t || !qrSafe(t.ink, t.bg)) state.locked.delete(i); });
+      state.candLocked.forEach(a => { const c = state.cands[a]; if (!c || !c.every(t => qrSafe(t.ink, t.bg))) state.candLocked.delete(a); });
       renderHits();
       reroll(true);
     }
@@ -921,6 +1023,10 @@ small { color: var(--muted); font-size: 13px; }
   els.random.addEventListener('click', randomize);
   els.back.addEventListener('click', back);
   els.save.addEventListener('click', save);
+  els.buyMain.addEventListener('click', () => {
+    if (state.wall > 1) openBuy({ kind: 'wall', k: state.wall, cands: state.cands.map(copyTiles) });
+    else openBuy({ kind: 'artwork', tiles: copyTiles(state.tiles) });
+  });
   els.close.addEventListener('click', closeModal);
   els.dl.addEventListener('click', e => {
     if (!downloadsCap) return;
@@ -931,20 +1037,37 @@ small { color: var(--muted); font-size: 13px; }
   els.modal.addEventListener('click', e => { if (e.target === els.modal) closeModal(); });
 
   const LOCK_OPEN = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 11V8a5 5 0 0 1 9.7-1.8" fill="none" stroke="currentColor" stroke-width="2.6"/><rect x="4" y="11" width="16" height="10" fill="currentColor"/></svg>';
+  const ICON_DICE = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.6"/><circle cx="8" cy="8" r="1.9" fill="currentColor"/><circle cx="12" cy="12" r="1.9" fill="currentColor"/><circle cx="16" cy="16" r="1.9" fill="currentColor"/></svg>';
+  const ICON_ZOOM = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10" cy="10" r="6.3" fill="none" stroke="currentColor" stroke-width="2.6"/><path d="M14.6 14.6L21 21" stroke="currentColor" stroke-width="3.2"/></svg>';
+  const ICON_EDIT = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20l1.2-5L15.5 4.7l3.8 3.8L9 18.8z" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"/></svg>';
   const LOCK_SHUT = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 11V8a5 5 0 0 1 10 0v3" fill="none" stroke="currentColor" stroke-width="2.6"/><rect x="4" y="11" width="16" height="10" fill="currentColor"/></svg>';
   function renderHits() {
     if (state.wall > 1) {
-      const L = layout(), pct = v => (v / L.size * 100) + '%';
+      const k = state.wall, pct = v => (v * 100 / k) + '%';
       els.hits.style.display = 'block';
-      els.hits.replaceChildren(...Array.from({ length: L.k * L.k }, (_, a) => {
-        const cell = document.createElement('button');
-        cell.type = 'button';
-        cell.className = 'hit cand';
-        cell.style.left = pct((a % L.k) * (L.cand + L.gap));
-        cell.style.top = pct(Math.floor(a / L.k) * (L.cand + L.gap));
-        cell.style.width = cell.style.height = pct(L.cand);
-        cell.setAttribute('aria-label', `Pick artwork ${a + 1}`);
-        cell.addEventListener('click', () => pickCand(a));
+      els.hits.replaceChildren(...Array.from({ length: k * k }, (_, a) => {
+        const locked = state.candLocked.has(a);
+        const cell = document.createElement('div');
+        cell.className = 'hit cand' + (locked ? ' locked' : '');
+        cell.tabIndex = 0;
+        cell.setAttribute('role', 'button');
+        cell.setAttribute('aria-label', `Zoom in on artwork ${a + 1}`);
+        cell.style.left = pct(a % k);
+        cell.style.top = pct(Math.floor(a / k));
+        cell.style.width = cell.style.height = pct(1);
+        cell.innerHTML = `${locked ? `<span class="cand-badge" aria-hidden="true">${LOCK_SHUT}</span>` : ''}
+          <div class="tools">
+            <button type="button" class="tool" data-act="roll" title="Re-roll this artwork" aria-label="Re-roll artwork ${a + 1}"${locked ? ' disabled' : ''}>${ICON_DICE}</button>
+            <button type="button" class="tool" data-act="lock" title="${locked ? 'Unlock' : 'Lock: Random keeps this artwork'}" aria-label="${locked ? 'Unlock' : 'Lock'} artwork ${a + 1}" aria-pressed="${locked}">${locked ? LOCK_SHUT : LOCK_OPEN}</button>
+            <button type="button" class="tool" data-act="zoom" title="Zoom in" aria-label="Zoom in on artwork ${a + 1}">${ICON_ZOOM}</button>
+            <button type="button" class="tool" data-act="edit" title="Edit this artwork" aria-label="Edit artwork ${a + 1}">${ICON_EDIT}</button>
+          </div>
+          <button type="button" class="buy-pill" data-act="buy" aria-label="Buy artwork ${a + 1}">Buy</button>`;
+        cell.addEventListener('click', e => {
+          const btn = e.target.closest('[data-act]');
+          candAction(btn ? btn.dataset.act : 'zoom', a);
+        });
+        cell.addEventListener('keydown', e => { if ((e.key === 'Enter') && e.target === cell) { e.preventDefault(); openZoom(a); } });
         return cell;
       }));
       return;
@@ -977,6 +1100,146 @@ small { color: var(--muted); font-size: 13px; }
     if (b) b.focus();
   }
 
+  // ---------- wall: per-artwork actions, zoom view ----------
+  function candAction(act, a) {
+    if (act === 'zoom') openZoom(a);
+    else if (act === 'edit') { closeZoom(); pickCand(a); }
+    else if (act === 'roll') rollCand(a);
+    else if (act === 'lock') toggleCandLock(a);
+    else if (act === 'buy') openBuy({ kind: 'artwork', tiles: copyTiles(state.cands[a]) });
+  }
+  function rollCand(a) {
+    if (state.candLocked.has(a)) return;
+    snapshot();
+    state.cands[a] = freshTiles();
+    render();
+  }
+  function toggleCandLock(a) {
+    if (state.candLocked.has(a)) state.candLocked.delete(a); else state.candLocked.add(a);
+    renderHits();
+    if (!els.zoom.hidden) renderZoom();
+    else {
+      const b = els.hits.children[a] && els.hits.children[a].querySelector('[data-act="lock"]');
+      if (b) b.focus();
+    }
+  }
+  let zoomIndex = 0;
+  function openZoom(a) {
+    zoomIndex = a;
+    if (els.zoom.hidden) lastFocus = document.activeElement;
+    els.zoom.hidden = false;
+    renderZoom();
+    $('zoom-buy').focus();
+  }
+  function renderZoom() {
+    const n = state.wall * state.wall;
+    if (state.wall === 1 || zoomIndex >= n) { closeZoom(); return; }
+    paint(els.zoomArt, [state.cands[zoomIndex]], 1, 1200);
+    els.zoomTitle.textContent = `Artwork ${zoomIndex + 1} of ${n}`;
+    const locked = state.candLocked.has(zoomIndex);
+    els.zoomLock.textContent = locked ? 'Unlock' : 'Lock';
+    els.zoomLock.setAttribute('aria-pressed', String(locked));
+    els.zoomRoll.disabled = locked;
+  }
+  function closeZoom() {
+    if (els.zoom.hidden) return;
+    els.zoom.hidden = true;
+    const cell = els.hits.children[zoomIndex];
+    if (cell && cell.focus) cell.focus(); else if (lastFocus && lastFocus.focus) lastFocus.focus();
+  }
+  function stepZoom(d) { const n = state.wall * state.wall; zoomIndex = (zoomIndex + d + n) % n; renderZoom(); }
+  $('zoom-prev').addEventListener('click', () => stepZoom(-1));
+  $('zoom-next').addEventListener('click', () => stepZoom(1));
+  $('zoom-close').addEventListener('click', closeZoom);
+  $('zoom-edit').addEventListener('click', () => candAction('edit', zoomIndex));
+  $('zoom-roll').addEventListener('click', () => rollCand(zoomIndex));
+  $('zoom-lock').addEventListener('click', () => toggleCandLock(zoomIndex));
+  $('zoom-buy').addEventListener('click', () => candAction('buy', zoomIndex));
+  $('zoom-save').addEventListener('click', () => {
+    const t = state.cands[zoomIndex];
+    saveCanvas(artworkCanvas(t), t, `Saved artwork ${zoomIndex + 1}`);
+  });
+  els.zoom.addEventListener('click', e => { if (e.target === els.zoom) closeZoom(); });
+
+  // ---------- buy ----------
+  let dbCap = null, userCap = null, buying = null, buyFocus = null;
+  function recipe(order) {
+    return {
+      mode: state.mode, preset: state.preset, grid: state.grid, texture: state.texture,
+      text: state.mode === 'text' ? { top: els.top.value, mid: els.mid.value, bot: els.bot.value, swap: els.swap.checked } : null,
+      qr: state.mode === 'qr' ? { url: els.url.value, caption: els.cap.value } : null,
+      tiles: order.tiles || null, wall: order.kind === 'wall' ? order.k : 1, cands: order.cands || null,
+    };
+  }
+  function openBuy(order) {
+    buying = order;
+    buyFocus = document.activeElement;
+    const c = document.createElement('canvas');
+    if (order.kind === 'wall') paint(c, order.cands, order.k, 640); else paint(c, [order.tiles], 1, 480);
+    order.thumb = c.toDataURL('image/jpeg', 0.82);
+    els.buyImg.src = order.thumb;
+    els.buyTitle.textContent = order.kind === 'wall' ? 'Buy this wall as one print' : 'Buy this print';
+    const checkout = !!SHOP.checkoutUrl;
+    els.buyLink.hidden = !checkout;
+    els.buyGo.hidden = checkout;
+    els.buyGo.disabled = false;
+    if (checkout) {
+      els.buyLink.href = SHOP.checkoutUrl;
+      els.buyMsg.textContent = 'Checkout opens in a new tab. Your artwork is saved with the order so it prints exactly like this.';
+    } else if (dbCap) {
+      els.buyMsg.textContent = "Checkout isn't open yet. Reserve this print and this exact artwork goes into the print queue.";
+    } else {
+      els.buyGo.disabled = true;
+      els.buyMsg.textContent = "Checkout isn't connected on this copy of the page yet. Save the PNG for now.";
+    }
+    els.buy.hidden = false;
+    (checkout ? els.buyLink : els.buyGo.disabled ? $('buy-save') : els.buyGo).focus();
+  }
+  function closeBuy() {
+    els.buy.hidden = true;
+    if (buyFocus && buyFocus.focus) buyFocus.focus();
+  }
+  async function reserve() {
+    if (!buying || !dbCap) throw { code: 'unavailable' };
+    const uid = userCap ? await userCap.id() : null;
+    if (!uid) throw { code: 'signed_out' };
+    if (buying.tiles) recordChoice(buying.tiles);
+    const size = document.querySelector('input[name="size"]:checked').value;
+    const ref = await dbCap.collection(`orders/${uid}/items`).add({
+      kind: buying.kind, size, status: SHOP.checkoutUrl ? 'checkout' : 'reserved',
+      recipe: recipe(buying), thumb: buying.thumb, at: Date.now(),
+    });
+    return ref.id;
+  }
+  els.buyGo.addEventListener('click', async () => {
+    els.buyGo.disabled = true;
+    els.buyMsg.textContent = 'Reserving…';
+    try {
+      const id = await reserve();
+      els.buyMsg.textContent = `Reserved. Reference ${id.slice(-6).toUpperCase()}. Prints aren't on sale yet; the owner of this page can see your reservation.`;
+    } catch (e) {
+      els.buyGo.disabled = false;
+      els.buyMsg.textContent =
+        e && e.code === 'signed_out' ? 'Sign in to claude.ai to reserve a print. You can still save the PNG.'
+        : e && e.code === 'invalid_argument' ? 'Your access to this page is view-only, so it can\'t save a reservation. Save the PNG instead.'
+        : e && e.code === 'quota_exceeded' ? 'The print queue is full right now. Save the PNG instead.'
+        : 'That reservation didn\'t go through. Try again, or save the PNG.';
+    }
+  });
+  els.buyLink.addEventListener('click', () => { reserve().catch(() => {}); }); // the link opens either way
+  $('buy-save').addEventListener('click', () => {
+    if (!buying) return;
+    if (buying.kind === 'wall') { const c = document.createElement('canvas'); paint(c, buying.cands, buying.k, SIZE); saveCanvas(c, null, 'Saved wall'); }
+    else saveCanvas(artworkCanvas(buying.tiles), buying.tiles, 'Saved');
+  });
+  $('buy-close').addEventListener('click', closeBuy);
+  els.buy.addEventListener('click', e => { if (e.target === els.buy) closeBuy(); });
+  if (window.claude && typeof window.claude.use === 'function') {
+    window.claude.use('db').then(d => { dbCap = d; }, () => {});
+    window.claude.use('user').then(u => { userCap = u; }, () => {});
+  }
+  function syncBuyLabel() { els.buyMain.textContent = state.wall > 1 ? 'Buy wall' : 'Buy now'; }
+
   // ---------- taste UI + shared store ----------
   function renderTaste() {
     const n = taste.saves;
@@ -985,9 +1248,9 @@ small { color: var(--muted); font-size: 13px; }
       : `Learned from ${n} picked or saved artwork${n === 1 ? '' : 's'}${taste.shared ? ' by everyone using this page' : ' in this browser'}.`;
     els.tasteReset.hidden = taste.shared || !n;
   }
-  function recordChoice() {
+  function recordChoice(tiles) {
     const n = state.grid * state.grid;
-    const pairs = state.tiles.slice(0, n).map(t => t.bg + '|' + t.ink);
+    const pairs = tiles.slice(0, n).map(t => t.bg + '|' + t.ink);
     addPairs(pairs);
     taste.saves++;
     storeLocal(pairs);
@@ -1026,6 +1289,13 @@ small { color: var(--muted); font-size: 13px; }
   document.addEventListener('keydown', e => {
     if (e.metaKey || e.ctrlKey || e.altKey) return;
     if (!els.modal.hidden) { if (e.key === 'Escape') closeModal(); return; }
+    if (!els.buy.hidden) { if (e.key === 'Escape') closeBuy(); return; }
+    if (!els.zoom.hidden) {
+      if (e.key === 'Escape') closeZoom();
+      else if (e.key === 'ArrowLeft') stepZoom(-1);
+      else if (e.key === 'ArrowRight') stepZoom(1);
+      return;
+    }
     if (typing(e.target)) return;
     if (e.code === 'Space') { e.preventDefault(); randomize(); }
     else if (e.key === 'z' || e.key === 'Z' || e.key === 'Backspace') { e.preventDefault(); back(); }
