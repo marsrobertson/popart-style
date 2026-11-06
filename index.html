@@ -72,8 +72,34 @@ body {
   width: 100%; aspect-ratio: 1; max-width: 100%;
   border: 3px solid var(--ink); box-shadow: 8px 8px 0 var(--ink); background: var(--ink);
 }
+.frame { position: relative; }
 .frame.drop { outline: 4px dashed var(--hot); outline-offset: 6px; }
-canvas { display: block; width: 100%; height: 100%; cursor: pointer; touch-action: manipulation; }
+.hits { position: absolute; inset: 0; display: grid; }
+.hit { position: relative; cursor: pointer; min-width: 0; }
+.hit.locked { cursor: default; box-shadow: inset 0 0 0 4px var(--pop), inset 0 0 0 7px var(--ink); }
+.lock {
+  position: absolute; top: 8px; right: 8px; width: 34px; height: 34px; padding: 6px;
+  border: 2px solid var(--ink); background: var(--paper); color: var(--ink);
+  box-shadow: 2px 2px 0 var(--ink); cursor: pointer; opacity: 0; transition: opacity 0.12s ease;
+}
+.lock svg { width: 100%; height: 100%; display: block; }
+.hit:hover .lock, .lock:focus-visible, .hit.locked .lock { opacity: 1; }
+.hit.locked .lock { background: var(--pop); }
+.lock:focus-visible { outline: 3px solid var(--hot); outline-offset: 2px; }
+.lock.nudge { animation: nudge 0.32s ease; }
+.hit.cand { position: absolute; border: 0; padding: 0; background: transparent; }
+.hit.cand:hover, .hit.cand:focus-visible { outline: none; box-shadow: inset 0 0 0 4px var(--hot), inset 0 0 0 7px var(--paper); }
+.hit.cand::after {
+  content: "Pick"; position: absolute; left: 6px; bottom: 6px; opacity: 0;
+  font: 13px var(--display); letter-spacing: 0.06em; text-transform: uppercase;
+  background: var(--ink); color: var(--pop); padding: 2px 7px;
+}
+.hit.cand:hover::after, .hit.cand:focus-visible::after { opacity: 1; }
+.ticks { display: flex; justify-content: space-between; font: 800 12px var(--body); color: var(--muted); margin-top: -4px; }
+@keyframes nudge { 25% { transform: rotate(-14deg); } 75% { transform: rotate(14deg); } }
+@media (hover: none) { .lock { opacity: 0.85; } }
+canvas { display: block; width: 100%; height: 100%; }
+.hits, .hit { touch-action: manipulation; }
 
 .actions { display: grid; grid-template-columns: 1fr 1.8fr 1fr; gap: 12px; }
 .btn {
@@ -165,7 +191,14 @@ small { color: var(--muted); font-size: 13px; }
 .sheet .row .btn { flex: 1 1 140px; }
 .sheet .hint { text-align: left; }
 
-@media (prefers-reduced-motion: reduce) { .btn { transition: none; } .logo mark { transform: none; } }
+.taste-row { display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+.linkbtn {
+  font: 700 13px var(--body); color: var(--ink); background: none; border: 0; padding: 2px 0;
+  text-decoration: underline; text-underline-offset: 3px; cursor: pointer;
+}
+.linkbtn:focus-visible { outline: 3px solid var(--hot); outline-offset: 2px; }
+
+@media (prefers-reduced-motion: reduce) { .btn, .lock { transition: none; } .logo mark { transform: none; } .lock.nudge { animation: none; } }
 </style>
 </head>
 <body>
@@ -179,14 +212,15 @@ small { color: var(--muted); font-size: 13px; }
   <section class="stage" aria-label="Artwork">
     <div class="stage-inner">
       <div class="frame" id="frame">
-        <canvas id="art" width="1800" height="1800" role="img" aria-label="Pop art grid. Click a tile to re-roll its colours."></canvas>
+        <canvas id="art" width="1800" height="1800" role="img" aria-label="Pop art grid"></canvas>
+        <div class="hits" id="hits"></div>
       </div>
       <div class="actions">
         <button id="back" class="btn" type="button" disabled>Back</button>
         <button id="random" class="btn big" type="button">Random</button>
         <button id="save" class="btn hot" type="button">Save</button>
       </div>
-      <p class="hint"><kbd>Space</kbd> random &nbsp;·&nbsp; click a tile to re-roll just that one &nbsp;·&nbsp; <kbd>Z</kbd> back &nbsp;·&nbsp; <kbd>S</kbd> save</p>
+      <p class="hint"><kbd>Space</kbd> random &nbsp;·&nbsp; click a tile to re-roll it &nbsp;·&nbsp; lock icon keeps a tile &nbsp;·&nbsp; <kbd>1</kbd>–<kbd>5</kbd> compare &nbsp;·&nbsp; <kbd>Z</kbd> back &nbsp;·&nbsp; <kbd>S</kbd> save</p>
       <div class="picks" id="picks" hidden>
         <h2>Your picks</h2>
         <div class="strip" id="strip"></div>
@@ -228,9 +262,19 @@ small { color: var(--muted); font-size: 13px; }
 
     <hr class="rule">
 
+    <div class="group">
+      <span class="label">Palette</span>
+      <div class="seg" role="radiogroup" aria-label="Palette">
+        <input type="radio" name="preset" id="p-all" value="all" checked><label for="p-all">All</label>
+        <input type="radio" name="preset" id="p-warhol" value="warhol"><label for="p-warhol">Warhol</label>
+        <input type="radio" name="preset" id="p-riso" value="riso"><label for="p-riso">Riso</label>
+        <input type="radio" name="preset" id="p-neon" value="neon"><label for="p-neon">Neon</label>
+      </div>
+    </div>
+
     <div class="two">
       <div>
-        <span class="label">Grid</span>
+        <span class="label">Tiles</span>
         <div class="seg" role="radiogroup" aria-label="Grid size">
           <input type="radio" name="grid" id="g2" value="2"><label for="g2">2×2</label>
           <input type="radio" name="grid" id="g3" value="3" checked><label for="g3">3×3</label>
@@ -245,6 +289,24 @@ small { color: var(--muted); font-size: 13px; }
         </div>
       </div>
     </div>
+
+    <div class="group">
+      <label class="field"><span>Compare <output id="wall-out" for="wall">1 artwork</output></span>
+        <input type="range" id="wall" min="1" max="5" step="1" value="1"></label>
+      <div class="ticks" aria-hidden="true"><span>1</span><span>2×2</span><span>3×3</span><span>4×4</span><span>5×5</span></div>
+      <small>Show a wall of artworks, then click the best one to keep working on it. Locked tiles stay in every artwork.</small>
+    </div>
+
+    <hr class="rule">
+
+    <div class="group">
+      <span class="label">Taste</span>
+      <label class="check"><input type="checkbox" id="taste-on" checked> Favour colour pairs that got saved</label>
+      <div class="taste-row">
+        <small id="taste-count">Nothing saved yet. Each pick and save teaches Random which colour pairs work.</small>
+        <button type="button" class="linkbtn" id="taste-reset" hidden>Forget my saves</button>
+      </div>
+    </div>
   </aside>
 </main>
 
@@ -256,7 +318,7 @@ small { color: var(--muted); font-size: 13px; }
       <a id="dl" class="btn hot" href="#" download>Download PNG</a>
       <button id="close" class="btn" type="button">Keep mixing</button>
     </div>
-    <p class="hint">1800 × 1800 PNG. If no download starts, right-click or long-press the image and save it.</p>
+    <p class="hint"><span id="modal-size">1800 × 1800</span> PNG. If no download starts, right-click or long-press the image and save it.</p>
   </div>
 </div>
 
@@ -265,27 +327,19 @@ small { color: var(--muted); font-size: 13px; }
   'use strict';
 
   // ---------- colour ----------
-  const COLORS = [
-    '#E8007D', // hot pink
-    '#FF5FB0', // bubblegum
-    '#FFD60A', // lemon
-    '#FF6200', // tangerine
-    '#E5162E', // fire red
-    '#00A39A', // teal
-    '#18C4E0', // cyan
-    '#2340FF', // klein blue
-    '#16206B', // navy
-    '#7B2FE0', // violet
-    '#C8A6FF', // lilac
-    '#A6E312', // lime
-    '#6FE3C1', // mint
-    '#FFB18A', // peach
-    '#3A3D41', // charcoal
-    '#151515', // black
-    '#FFFFFF', // white
-  ];
   const WHITE = '#FFFFFF', BLACK = '#151515';
-  const BG_POOL = COLORS.filter(c => c !== WHITE);
+  const PRESETS = {
+    // everything
+    all: ['#E8007D', '#FF5FB0', '#FFD60A', '#FF6200', '#E5162E', '#00A39A', '#18C4E0', '#2340FF', '#16206B',
+          '#7B2FE0', '#C8A6FF', '#A6E312', '#6FE3C1', '#FFB18A', '#3A3D41', '#151515', '#FFFFFF'],
+    // hot screen-print colours
+    warhol: ['#E8007D', '#FF5FB0', '#FFD60A', '#FF6200', '#E5162E', '#00A39A', '#18C4E0', '#C8A6FF', '#A6E312', '#151515', '#FFFFFF'],
+    // risograph-style inks on off-white paper
+    riso: ['#FF48B0', '#FFE800', '#FF6C2F', '#F15060', '#00A95C', '#00838A', '#5EC8E5', '#0078BF', '#3D5588', '#765BA7', '#F7F2E8', '#000000'],
+    // night-club tubes on deep backgrounds
+    neon: ['#39FF14', '#FF2BD6', '#00F0FF', '#FFF200', '#FF5E00', '#B026FF', '#FF3864', '#0B0B14', '#1B1350', '#FFFFFF'],
+  };
+  const KNOWN = new Set(Object.values(PRESETS).flat());
 
   const rgbOf = h => { const n = parseInt(h.slice(1), 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; };
   const lumCache = new Map();
@@ -316,21 +370,66 @@ small { color: var(--muted); font-size: 13px; }
     const c = contrast(a, b);
     return c >= 2.2 || (hueGap(a, b) >= 100 && c >= 1.12);
   }
-  function inksFor(mode, bg) {
-    if (mode === 'qr') return COLORS.filter(c => c !== bg && lum(c) < lum(bg) && contrast(c, bg) >= 4);
-    return COLORS.filter(c => popPair(c, bg));
+  const qrSafe = (ink, bg) => lum(ink) < lum(bg) && contrast(ink, bg) >= 4;
+  function inksFor(mode, bg, colors) {
+    if (mode === 'qr') return colors.filter(c => c !== bg && qrSafe(c, bg));
+    return colors.filter(c => popPair(c, bg));
   }
+  // weighted pick: items are [value, weight]
+  function pickWeighted(items) {
+    const total = items.reduce((s, it) => s + it[1], 0);
+    let r = Math.random() * total;
+    for (const it of items) { r -= it[1]; if (r <= 0) return it[0]; }
+    return items[items.length - 1][0];
+  }
+  const boost = n => (taste.on ? 3 * Math.sqrt(n || 0) : 0);
   const pick = a => a[Math.floor(Math.random() * a.length)];
 
   function rollTile(mode, avoid = new Set()) {
-    let pool = BG_POOL.filter(c => !avoid.has(c) && inksFor(mode, c).length);
-    if (!pool.length) pool = BG_POOL.filter(c => inksFor(mode, c).length);
-    const bg = pick(pool);
-    const ink = pick(inksFor(mode, bg));
-    const mids = COLORS.filter(c => c !== bg && c !== ink && popPair(c, bg) && popPair(c, ink));
+    const colors = PRESETS[state.preset];
+    const usable = c => inksFor(mode, c, colors).length > 0;
+    const bgs = colors.filter(c => c !== WHITE);
+    let pool = bgs.filter(c => !avoid.has(c) && usable(c));
+    if (!pool.length) pool = bgs.filter(usable);
+    if (!pool.length) pool = colors.filter(usable);
+    if (!pool.length) return { bg: '#FFD60A', ink: BLACK, mid: '#E8007D', small: BLACK, conn: 0 };
+    // Background first, then ink. Colours and pairs that people saved get picked more often.
+    const bg = pickWeighted(pool.map(c => [c, 1 + boost(taste.bgCounts.get(c))]));
+    const ink = pickWeighted(inksFor(mode, bg, colors).map(c => [c, 1 + boost(taste.counts.get(bg + '|' + c))]));
+    const mids = colors.filter(c => c !== bg && c !== ink && popPair(c, bg) && popPair(c, ink));
     const mid = mids.length ? pick(mids) : (lum(bg) > 0.4 ? BLACK : WHITE);
     const small = contrast(WHITE, bg) >= 2.4 ? WHITE : BLACK;
     return { bg, ink, mid, small, conn: Math.floor(Math.random() * 720) };
+  }
+
+  // ---------- taste: what got saved ----------
+  const TASTE_KEY = 'popart-mixer-saves';
+  const taste = { on: true, counts: new Map(), bgCounts: new Map(), saves: 0, shared: false, db: null };
+  function addPairs(pairs) {
+    for (const p of pairs) {
+      if (typeof p !== 'string') continue;
+      const [bg, ink] = p.split('|');
+      if (!KNOWN.has(bg) || !KNOWN.has(ink)) continue; // shared rows are untrusted: count only real palette colours
+      taste.counts.set(p, (taste.counts.get(p) || 0) + 1);
+      taste.bgCounts.set(bg, (taste.bgCounts.get(bg) || 0) + 1);
+    }
+  }
+  function clearCounts() { taste.counts.clear(); taste.bgCounts.clear(); taste.saves = 0; }
+  function readLocal() {
+    try { const v = JSON.parse(localStorage.getItem(TASTE_KEY) || '[]'); return Array.isArray(v) ? v : []; }
+    catch (e) { return []; }
+  }
+  function loadLocal() {
+    clearCounts();
+    for (const s of readLocal()) if (Array.isArray(s)) { addPairs(s.slice(0, 9)); taste.saves++; }
+  }
+  function storeLocal(pairs) {
+    try {
+      const all = readLocal();
+      all.push(pairs);
+      while (all.length > 500) all.shift();
+      localStorage.setItem(TASTE_KEY, JSON.stringify(all));
+    } catch (e) { /* storage blocked: counts still live for this visit */ }
   }
 
   // ---------- state ----------
@@ -338,7 +437,9 @@ small { color: var(--muted); font-size: 13px; }
   const els = {
     top: $('t-top'), mid: $('t-mid'), bot: $('t-bot'), swap: $('t-swap'),
     file: $('file'), fileName: $('file-name'), detail: $('detail'), detailOut: $('detail-out'),
-    url: $('q-url'), cap: $('q-cap'),
+    url: $('q-url'), cap: $('q-cap'), hits: $('hits'),
+    wall: $('wall'), wallOut: $('wall-out'), modalSize: $('modal-size'),
+    tasteOn: $('taste-on'), tasteCount: $('taste-count'), tasteReset: $('taste-reset'),
     back: $('back'), random: $('random'), save: $('save'),
     picks: $('picks'), strip: $('strip'), frame: $('frame'),
     modal: $('modal'), modalImg: $('modal-img'), modalTitle: $('modal-title'), dl: $('dl'), close: $('close'),
@@ -349,30 +450,68 @@ small { color: var(--muted); font-size: 13px; }
   const BIG_FONT = 'Anton, Impact, "Arial Narrow Bold", sans-serif';
   const SMALL_FONT = 'Archivo, "Helvetica Neue", Arial, sans-serif';
 
-  const state = { mode: 'text', grid: 3, texture: 'grain', tiles: [], history: [] };
+  const state = { mode: 'text', grid: 3, texture: 'grain', preset: 'all', wall: 1, tiles: [], cands: [], history: [], locked: new Set() };
   const picks = [];
 
   function freshTiles() {
-    const used = new Set();
-    return Array.from({ length: 9 }, () => {
+    const n = state.grid * state.grid, used = new Set();
+    state.locked.forEach(i => { if (i < n && state.tiles[i]) used.add(state.tiles[i].bg); });
+    return Array.from({ length: 9 }, (_, i) => {
+      if (state.locked.has(i) && state.tiles[i]) return state.tiles[i];
       const t = rollTile(state.mode, used);
       used.add(t.bg);
       return t;
     });
   }
+  const copyTiles = ts => ts.map(t => ({ ...t }));
   function snapshot() {
-    state.history.push(state.tiles.map(t => ({ ...t })));
+    state.history.push({ tiles: copyTiles(state.tiles), cands: state.cands.map(copyTiles), wall: state.wall });
     if (state.history.length > 80) state.history.shift();
     els.back.disabled = false;
   }
-  function randomize() { snapshot(); state.tiles = freshTiles(); render(); }
+  // all = also replace the current artwork while the wall is showing (palette or mode changes)
+  function reroll(all = false) {
+    if (all || state.wall === 1) state.tiles = freshTiles();
+    if (state.wall > 1) state.cands = Array.from({ length: state.wall * state.wall }, () => freshTiles());
+  }
+  function randomize() { snapshot(); reroll(); render(); }
   function back() {
     if (!state.history.length) return;
-    state.tiles = state.history.pop();
+    const h = state.history.pop();
+    state.tiles = h.tiles; state.cands = h.cands; state.wall = h.wall;
     els.back.disabled = !state.history.length;
-    render();
+    syncWall(); renderHits(); render();
+  }
+  function syncWall() {
+    const k = state.wall;
+    els.wall.value = String(k);
+    els.wallOut.textContent = k === 1 ? '1 artwork' : `${k}×${k} = ${k * k} artworks`;
+  }
+  function setWall(k) {
+    k = Math.max(1, Math.min(5, Math.round(k)));
+    if (k === state.wall) return;
+    snapshot();
+    if (k > 1) {
+      // the current artwork stays first on the wall so you compare against it
+      const prev = state.wall > 1 ? state.cands : [copyTiles(state.tiles)];
+      state.cands = Array.from({ length: k * k }, (_, i) => prev[i] || freshTiles());
+    }
+    state.wall = k;
+    syncWall(); renderHits(); render();
+  }
+  function pickCand(a) {
+    snapshot();
+    state.tiles = copyTiles(state.cands[a]);
+    state.wall = 1;
+    recordChoice();
+    syncWall(); renderHits(); render();
   }
   function rerollTile(i) {
+    if (state.locked.has(i)) {
+      const b = els.hits.children[i] && els.hits.children[i].querySelector('.lock');
+      if (b) { b.classList.remove('nudge'); void b.offsetWidth; b.classList.add('nudge'); }
+      return;
+    }
     snapshot();
     const n = state.grid * state.grid;
     const avoid = new Set(state.tiles.slice(0, n).map(t => t.bg));
@@ -381,13 +520,30 @@ small { color: var(--muted); font-size: 13px; }
   }
 
   // ---------- drawing ----------
+  function layout() {
+    const n = state.grid, k = state.wall;
+    if (k === 1) return { k, n, T: SIZE / n, cand: SIZE, gap: 0, size: SIZE };
+    const gap = Math.round(SIZE * 0.014);
+    const T = Math.floor((SIZE - gap * (k - 1)) / (k * n)); // whole-pixel tiles keep edges crisp
+    const cand = T * n;
+    return { k, n, T, cand, gap, size: cand * k + gap * (k - 1) };
+  }
   function render() {
-    const n = state.grid, T = SIZE / n;
+    const L = layout();
+    if (canvas.width !== L.size) canvas.width = canvas.height = L.size;
+    ctx.fillStyle = WHITE;
+    ctx.fillRect(0, 0, L.size, L.size);
+    const sets = L.k === 1 ? [state.tiles] : state.cands;
+    for (let a = 0; a < L.k * L.k; a++) {
+      drawArt(sets[a], (a % L.k) * (L.cand + L.gap), Math.floor(a / L.k) * (L.cand + L.gap), L.n, L.T);
+    }
+  }
+  function drawArt(tiles, ox, oy, n, T) {
     ctx.textBaseline = 'alphabetic';
     ctx.textAlign = 'left';
     for (let r = 0; r < n; r++) {
       for (let c = 0; c < n; c++) {
-        const i = r * n + c, t = state.tiles[i], x = c * T, y = r * T;
+        const i = r * n + c, t = tiles[i], x = ox + c * T, y = oy + r * T;
         ctx.save();
         ctx.beginPath(); ctx.rect(x, y, T, T); ctx.clip();
         ctx.fillStyle = t.bg; ctx.fillRect(x, y, T, T);
@@ -402,7 +558,7 @@ small { color: var(--muted); font-size: 13px; }
         ctx.restore();
       }
     }
-    if (state.texture === 'grain') drawGrain();
+    if (state.texture === 'grain') drawGrain(ox, oy, n * T);
   }
 
   function drawDots(x, y, T, bg) {
@@ -420,7 +576,7 @@ small { color: var(--muted); font-size: 13px; }
   }
 
   let grainPattern = null;
-  function drawGrain() {
+  function drawGrain(x, y, size) {
     if (!grainPattern) {
       const g = document.createElement('canvas');
       g.width = g.height = 256;
@@ -437,7 +593,7 @@ small { color: var(--muted); font-size: 13px; }
     ctx.globalAlpha = 0.1;
     ctx.globalCompositeOperation = 'overlay';
     ctx.fillStyle = grainPattern;
-    ctx.fillRect(0, 0, SIZE, SIZE);
+    ctx.fillRect(x, y, size, size);
     ctx.restore();
   }
 
@@ -625,19 +781,19 @@ small { color: var(--muted); font-size: 13px; }
   }
 
   // ---------- save ----------
-  function stamp() {
-    const d = new Date(), p = v => String(v).padStart(2, '0');
-    return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
-  }
+  // ISO 8601 basic format in UTC, e.g. 20261106T143005Z (no colons, which file systems reject)
+  const stamp = () => new Date().toISOString().replace(/\.\d+Z$/, 'Z').replace(/[-:]/g, '');
   function save() {
+    const wall = state.wall > 1;
+    if (!wall) recordChoice(); // a saved wall is a poster, not a vote for each artwork on it
     canvas.toBlob(blob => {
       if (!blob) return;
       const url = URL.createObjectURL(blob);
-      const name = `popart-${stamp()}.png`;
-      picks.unshift({ url, name });
+      const name = `popart-marsita-${stamp()}.png`;
+      picks.unshift({ url, name, w: canvas.width, h: canvas.height });
       if (picks.length > 30) URL.revokeObjectURL(picks.pop().url);
       renderPicks();
-      openModal(picks[0], 'Saved');
+      openModal(picks[0], wall ? 'Saved wall' : 'Saved');
       download(picks[0], blob);
     }, 'image/png');
   }
@@ -678,6 +834,7 @@ small { color: var(--muted); font-size: 13px; }
     lastFocus = document.activeElement;
     els.modalTitle.textContent = title;
     els.modalImg.src = p.url;
+    els.modalSize.textContent = `${p.w} × ${p.h}`;
     els.dl.href = p.url;
     els.dl.download = p.name;
     els.modal.hidden = false;
@@ -694,14 +851,27 @@ small { color: var(--muted); font-size: 13px; }
     state.mode = m;
     document.querySelectorAll('[data-mode]').forEach(g => { g.hidden = g.dataset.mode !== m; });
     $('m-' + m).checked = true;
-    if (enteringQr) { snapshot(); state.tiles = freshTiles(); }
+    if (enteringQr) {
+      // a locked tile only survives the switch if its colours still scan
+      state.locked.forEach(i => { const t = state.tiles[i]; if (!t || !qrSafe(t.ink, t.bg)) state.locked.delete(i); });
+      renderHits();
+      snapshot();
+      reroll(true);
+    }
     render();
   }
   document.querySelectorAll('input[name="mode"]').forEach(r => r.addEventListener('change', () => setMode(r.value)));
-  document.querySelectorAll('input[name="grid"]').forEach(r => r.addEventListener('change', () => { state.grid = +r.value; render(); }));
+  document.querySelectorAll('input[name="grid"]').forEach(r => r.addEventListener('change', () => { state.grid = +r.value; renderHits(); render(); }));
+  document.querySelectorAll('input[name="preset"]').forEach(r => r.addEventListener('change', () => {
+    state.preset = r.value;
+    snapshot();
+    reroll(true);
+    render();
+  }));
   document.querySelectorAll('input[name="tex"]').forEach(r => r.addEventListener('change', () => { state.texture = r.value; render(); }));
   [els.top, els.mid, els.bot, els.url, els.cap].forEach(el => el.addEventListener('input', render));
   els.swap.addEventListener('change', render);
+  els.wall.addEventListener('input', () => setWall(+els.wall.value));
   els.detail.addEventListener('input', () => { els.detailOut.textContent = els.detail.value; render(); });
 
   function loadFile(file) {
@@ -741,12 +911,97 @@ small { color: var(--muted); font-size: 13px; }
   });
   els.modal.addEventListener('click', e => { if (e.target === els.modal) closeModal(); });
 
-  canvas.addEventListener('click', e => {
-    const r = canvas.getBoundingClientRect(), n = state.grid;
-    const c = Math.min(n - 1, Math.max(0, Math.floor((e.clientX - r.left) / r.width * n)));
-    const row = Math.min(n - 1, Math.max(0, Math.floor((e.clientY - r.top) / r.height * n)));
-    rerollTile(row * n + c);
+  const LOCK_OPEN = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 11V8a5 5 0 0 1 9.7-1.8" fill="none" stroke="currentColor" stroke-width="2.6"/><rect x="4" y="11" width="16" height="10" fill="currentColor"/></svg>';
+  const LOCK_SHUT = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 11V8a5 5 0 0 1 10 0v3" fill="none" stroke="currentColor" stroke-width="2.6"/><rect x="4" y="11" width="16" height="10" fill="currentColor"/></svg>';
+  function renderHits() {
+    if (state.wall > 1) {
+      const L = layout(), pct = v => (v / L.size * 100) + '%';
+      els.hits.style.display = 'block';
+      els.hits.replaceChildren(...Array.from({ length: L.k * L.k }, (_, a) => {
+        const cell = document.createElement('button');
+        cell.type = 'button';
+        cell.className = 'hit cand';
+        cell.style.left = pct((a % L.k) * (L.cand + L.gap));
+        cell.style.top = pct(Math.floor(a / L.k) * (L.cand + L.gap));
+        cell.style.width = cell.style.height = pct(L.cand);
+        cell.setAttribute('aria-label', `Pick artwork ${a + 1}`);
+        cell.addEventListener('click', () => pickCand(a));
+        return cell;
+      }));
+      return;
+    }
+    els.hits.style.display = '';
+    const n = state.grid;
+    els.hits.style.gridTemplateColumns = `repeat(${n}, minmax(0, 1fr))`;
+    els.hits.style.gridTemplateRows = `repeat(${n}, minmax(0, 1fr))`;
+    els.hits.replaceChildren(...Array.from({ length: n * n }, (_, i) => {
+      const locked = state.locked.has(i);
+      const cell = document.createElement('div');
+      cell.className = 'hit' + (locked ? ' locked' : '');
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'lock';
+      b.innerHTML = locked ? LOCK_SHUT : LOCK_OPEN;
+      b.setAttribute('aria-pressed', String(locked));
+      b.setAttribute('aria-label', `${locked ? 'Unlock' : 'Lock'} tile ${i + 1}`);
+      b.title = locked ? 'Unlock: Random can change this tile again' : 'Lock: Random keeps this tile';
+      b.addEventListener('click', e => { e.stopPropagation(); toggleLock(i); });
+      cell.addEventListener('click', () => rerollTile(i));
+      cell.appendChild(b);
+      return cell;
+    }));
+  }
+  function toggleLock(i) {
+    if (state.locked.has(i)) state.locked.delete(i); else state.locked.add(i);
+    renderHits();
+    const b = els.hits.children[i] && els.hits.children[i].querySelector('.lock');
+    if (b) b.focus();
+  }
+
+  // ---------- taste UI + shared store ----------
+  function renderTaste() {
+    const n = taste.saves;
+    els.tasteCount.textContent = !n
+      ? 'Nothing saved yet. Each pick and save teaches Random which colour pairs work.'
+      : `Learned from ${n} picked or saved artwork${n === 1 ? '' : 's'}${taste.shared ? ' by everyone using this page' : ' in this browser'}.`;
+    els.tasteReset.hidden = taste.shared || !n;
+  }
+  function recordChoice() {
+    const n = state.grid * state.grid;
+    const pairs = state.tiles.slice(0, n).map(t => t.bg + '|' + t.ink);
+    addPairs(pairs);
+    taste.saves++;
+    storeLocal(pairs);
+    renderTaste();
+    if (taste.db) {
+      taste.db.collection('saves').add({ pairs, mode: state.mode, preset: state.preset, grid: n, at: Date.now() })
+        .catch(e => {
+          if (e && e.code === 'quota_exceeded') els.tasteCount.textContent = 'The shared taste store is full, so this save only counts in your browser.';
+        });
+    }
+  }
+  els.tasteOn.addEventListener('change', () => { taste.on = els.tasteOn.checked; });
+  els.tasteReset.addEventListener('click', () => {
+    try { localStorage.removeItem(TASTE_KEY); } catch (e) { /* nothing stored */ }
+    clearCounts();
+    renderTaste();
   });
+  if (window.claude && typeof window.claude.use === 'function') {
+    // On claude.ai the page has a shared store: everyone's saves shape Random. Elsewhere it stays per browser.
+    window.claude.use('db').then(db => {
+      if (!db) return;
+      db.collection('saves').orderBy('at', 'desc').limit(1000).get().then(snap => {
+        clearCounts();
+        snap.docs.forEach(d => {
+          const v = d.data();
+          if (v && Array.isArray(v.pairs)) { addPairs(v.pairs.slice(0, 9)); taste.saves++; }
+        });
+        taste.db = db;
+        taste.shared = true;
+        renderTaste();
+      }, () => { /* store unreachable: keep browser counts */ });
+    }, () => {});
+  }
 
   const typing = el => el && el.matches && el.matches('input[type="text"], input[type="url"], input:not([type]), textarea');
   document.addEventListener('keydown', e => {
@@ -756,11 +1011,15 @@ small { color: var(--muted); font-size: 13px; }
     if (e.code === 'Space') { e.preventDefault(); randomize(); }
     else if (e.key === 'z' || e.key === 'Z' || e.key === 'Backspace') { e.preventDefault(); back(); }
     else if (e.key === 's' || e.key === 'S') { e.preventDefault(); save(); }
+    else if (/^[1-5]$/.test(e.key) && e.target !== els.wall) { e.preventDefault(); setWall(+e.key); }
   });
   document.addEventListener('keyup', e => { if (e.code === 'Space' && !typing(e.target)) e.preventDefault(); });
 
   // ---------- start ----------
+  loadLocal();
+  renderTaste();
   state.tiles = freshTiles();
+  renderHits();
   render();
   if (document.fonts) {
     Promise.all([document.fonts.load(`100px Anton`), document.fonts.load(`800 40px Archivo`)])
