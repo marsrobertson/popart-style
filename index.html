@@ -1,0 +1,753 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pop Art Mixer</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="Press random until the colours look good, then save. A 3x3 pop art grid from your text, image or QR code.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wdth,wght@62..125,400..900&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+<style>
+/* Layout: one square artwork with a big RANDOM bar under it on the left, a comic-panel control box on the right; stacks to one column on phones. */
+:root {
+  --paper: #FFFFFF;
+  --ink: #121212;
+  --benday: #F4CFE3;
+  --pop: #FFD60A;
+  --hot: #E8007D;
+  --muted: #5A5360;
+  --scrim: rgba(18, 18, 18, 0.74);
+  --display: "Anton", Impact, "Haettenschweiler", "Arial Narrow Bold", sans-serif;
+  --body: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { min-height: 100%; }
+body {
+  margin: 0;
+  background-color: var(--paper);
+  background-image: radial-gradient(var(--benday) 1.4px, transparent 1.7px);
+  background-size: 14px 14px;
+  color: var(--ink);
+  font-family: var(--body);
+  font-size: 15px;
+  line-height: 1.45;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px 40px;
+}
+
+.top {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px;
+  max-width: 1240px; margin: 0 auto 22px;
+}
+.logo {
+  font-family: var(--display); font-weight: 400; margin: 0;
+  font-size: clamp(34px, 6vw, 56px); line-height: 1; letter-spacing: 0.01em;
+  text-wrap: balance;
+}
+.logo mark {
+  background: var(--pop); color: var(--ink);
+  border: 3px solid var(--ink); box-shadow: 4px 4px 0 var(--ink);
+  padding: 0 0.14em; display: inline-block; transform: rotate(-2deg);
+}
+.tag { margin: 0; font-weight: 650; color: var(--muted); font-size: 16px; }
+
+.app {
+  display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 32px;
+  max-width: 1240px; margin: 0 auto; align-items: start;
+}
+@media (max-width: 880px) { .app { grid-template-columns: minmax(0, 1fr); } }
+
+.stage { display: flex; justify-content: center; min-width: 0; }
+.stage-inner {
+  width: min(100%, max(320px, calc(100vh - 250px)));
+  display: flex; flex-direction: column; gap: 16px; min-width: 0;
+}
+.frame {
+  width: 100%; aspect-ratio: 1; max-width: 100%;
+  border: 3px solid var(--ink); box-shadow: 8px 8px 0 var(--ink); background: var(--ink);
+}
+.frame.drop { outline: 4px dashed var(--hot); outline-offset: 6px; }
+canvas { display: block; width: 100%; height: 100%; cursor: pointer; touch-action: manipulation; }
+
+.actions { display: grid; grid-template-columns: 1fr 1.8fr 1fr; gap: 12px; }
+.btn {
+  font-family: var(--display); font-weight: 400; font-size: 20px; letter-spacing: 0.05em;
+  text-transform: uppercase; text-decoration: none; text-align: center; line-height: 1.1;
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  border: 3px solid var(--ink); background: var(--paper); color: var(--ink);
+  padding: 12px 14px; box-shadow: 4px 4px 0 var(--ink); cursor: pointer;
+  transition: transform 0.06s ease, box-shadow 0.06s ease;
+}
+.btn:hover { transform: translate(-1px, -1px); box-shadow: 5px 5px 0 var(--ink); }
+.btn:active { transform: translate(3px, 3px); box-shadow: 1px 1px 0 var(--ink); }
+.btn:focus-visible { outline: 3px solid var(--hot); outline-offset: 3px; }
+.btn:disabled { opacity: 0.35; cursor: not-allowed; transform: none; box-shadow: 4px 4px 0 var(--ink); }
+.btn.big { background: var(--pop); font-size: 30px; padding-block: 10px; }
+.btn.hot { background: var(--hot); color: var(--paper); }
+
+.hint { margin: 0; font-size: 13px; color: var(--muted); text-align: center; }
+kbd {
+  font-family: var(--body); font-weight: 800; font-size: 11px; text-transform: uppercase;
+  border: 2px solid var(--ink); padding: 0 5px; background: var(--paper); color: var(--ink);
+}
+
+.picks { min-width: 0; }
+.picks h2 {
+  font-family: var(--display); font-weight: 400; text-transform: uppercase;
+  font-size: 18px; letter-spacing: 0.05em; margin: 0 0 8px;
+}
+.strip { display: flex; gap: 12px; overflow-x: auto; padding: 2px 6px 10px 2px; }
+.strip button {
+  flex: 0 0 auto; width: 78px; height: 78px; padding: 0; cursor: pointer;
+  border: 3px solid var(--ink); background: var(--ink); box-shadow: 3px 3px 0 var(--ink);
+}
+.strip button:focus-visible { outline: 3px solid var(--hot); outline-offset: 2px; }
+.strip img { width: 100%; height: 100%; display: block; }
+
+.panel {
+  background: var(--paper); border: 3px solid var(--ink); box-shadow: 8px 8px 0 var(--ink);
+  padding: 18px; display: flex; flex-direction: column; gap: 18px; min-width: 0;
+}
+.group { display: flex; flex-direction: column; gap: 12px; }
+.rule { border: 0; border-top: 2px dashed var(--ink); margin: 0; }
+.label, .field > span {
+  font-family: var(--display); text-transform: uppercase; letter-spacing: 0.06em; font-size: 15px;
+  display: flex; justify-content: space-between; align-items: baseline;
+}
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field input:not([type="range"]) {
+  font: 650 17px var(--body); color: var(--ink); background: var(--paper);
+  border: 3px solid var(--ink); border-radius: 0; padding: 10px 12px; width: 100%;
+}
+.field input:focus-visible { outline: 3px solid var(--hot); outline-offset: 2px; }
+input[type="range"] { accent-color: var(--hot); width: 100%; }
+output { font-family: var(--body); font-weight: 800; font-size: 13px; font-variant-numeric: tabular-nums; }
+small { color: var(--muted); font-size: 13px; }
+
+.seg { position: relative; display: flex; border: 3px solid var(--ink); }
+.seg input { position: absolute; opacity: 0; pointer-events: none; }
+.seg label {
+  flex: 1; text-align: center; padding: 9px 6px; cursor: pointer;
+  font-family: var(--display); text-transform: uppercase; letter-spacing: 0.05em; font-size: 16px;
+}
+.seg label:not(:first-of-type) { border-left: 3px solid var(--ink); }
+.seg input:checked + label { background: var(--ink); color: var(--pop); }
+.seg input:focus-visible + label { outline: 3px solid var(--hot); outline-offset: -7px; }
+.two { display: grid; grid-template-columns: 1fr 1.6fr; gap: 12px; }
+.two > div { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+
+.check { display: flex; gap: 10px; align-items: center; font-weight: 650; cursor: pointer; }
+.check input { width: 20px; height: 20px; accent-color: var(--hot); flex: 0 0 auto; }
+
+.sr { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; }
+.sr:focus-visible + .btn { outline: 3px solid var(--hot); outline-offset: 3px; }
+
+.modal {
+  position: fixed; inset: 0; z-index: 20; background: var(--scrim);
+  display: grid; place-items: center;
+  padding: max(16px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px))
+           max(16px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+}
+.sheet {
+  background: var(--paper); border: 3px solid var(--ink); box-shadow: 8px 8px 0 var(--pop);
+  padding: 16px; display: flex; flex-direction: column; gap: 12px;
+  width: min(560px, 100%); max-height: 100%; overflow: auto;
+}
+.sheet h2 { font-family: var(--display); font-weight: 400; text-transform: uppercase; margin: 0; font-size: 26px; letter-spacing: 0.03em; }
+.sheet img { width: 100%; height: auto; display: block; border: 3px solid var(--ink); }
+.sheet .row { display: flex; gap: 12px; flex-wrap: wrap; }
+.sheet .row .btn { flex: 1 1 140px; }
+.sheet .hint { text-align: left; }
+
+@media (prefers-reduced-motion: reduce) { .btn { transition: none; } .logo mark { transform: none; } }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <h1 class="logo">POP ART <mark>MIXER</mark></h1>
+  <p class="tag">Press random until it looks good. Then save.</p>
+</header>
+
+<main class="app">
+  <section class="stage" aria-label="Artwork">
+    <div class="stage-inner">
+      <div class="frame" id="frame">
+        <canvas id="art" width="1800" height="1800" role="img" aria-label="Pop art grid. Click a tile to re-roll its colours."></canvas>
+      </div>
+      <div class="actions">
+        <button id="back" class="btn" type="button" disabled>Back</button>
+        <button id="random" class="btn big" type="button">Random</button>
+        <button id="save" class="btn hot" type="button">Save</button>
+      </div>
+      <p class="hint"><kbd>Space</kbd> random &nbsp;·&nbsp; click a tile to re-roll just that one &nbsp;·&nbsp; <kbd>Z</kbd> back &nbsp;·&nbsp; <kbd>S</kbd> save</p>
+      <div class="picks" id="picks" hidden>
+        <h2>Your picks</h2>
+        <div class="strip" id="strip"></div>
+      </div>
+    </div>
+  </section>
+
+  <aside class="panel" aria-label="Settings">
+    <div class="group">
+      <span class="label">Make it from</span>
+      <div class="seg" role="radiogroup" aria-label="Source">
+        <input type="radio" name="mode" id="m-text" value="text" checked><label for="m-text">Text</label>
+        <input type="radio" name="mode" id="m-image" value="image"><label for="m-image">Image</label>
+        <input type="radio" name="mode" id="m-qr" value="qr"><label for="m-qr">QR code</label>
+      </div>
+    </div>
+
+    <div class="group" data-mode="text">
+      <label class="field"><span>Big line 1</span><input type="text" id="t-top" value="Art" maxlength="40" autocomplete="off"></label>
+      <label class="field"><span>Small line</span><input type="text" id="t-mid" value="is part of | is" maxlength="60" autocomplete="off">
+        <small>Put <b>|</b> between options. Each tile picks one.</small></label>
+      <label class="field"><span>Big line 2</span><input type="text" id="t-bot" value="Marketing" maxlength="40" autocomplete="off"></label>
+      <label class="check"><input type="checkbox" id="t-swap" checked> Swap the big lines on every other tile</label>
+    </div>
+
+    <div class="group" data-mode="image" hidden>
+      <input type="file" id="file" accept="image/*" class="sr">
+      <label class="btn" for="file">Choose image</label>
+      <small id="file-name">Showing a sample ball. You can also drop or paste an image anywhere.</small>
+      <label class="field"><span>Detail <output id="detail-out" for="detail">160</output></span>
+        <input type="range" id="detail" min="60" max="420" step="10" value="160"></label>
+    </div>
+
+    <div class="group" data-mode="qr" hidden>
+      <label class="field"><span>Link</span><input type="url" id="q-url" value="https://github.com/marsrobertson/popart-style" autocomplete="off"></label>
+      <label class="field"><span>Caption (optional)</span><input type="text" id="q-cap" value="Scan me" maxlength="30" autocomplete="off"></label>
+      <small>QR tiles always put a darker code on a lighter colour, so phones can still scan them.</small>
+    </div>
+
+    <hr class="rule">
+
+    <div class="two">
+      <div>
+        <span class="label">Grid</span>
+        <div class="seg" role="radiogroup" aria-label="Grid size">
+          <input type="radio" name="grid" id="g2" value="2"><label for="g2">2×2</label>
+          <input type="radio" name="grid" id="g3" value="3" checked><label for="g3">3×3</label>
+        </div>
+      </div>
+      <div>
+        <span class="label">Texture</span>
+        <div class="seg" role="radiogroup" aria-label="Texture">
+          <input type="radio" name="tex" id="x-none" value="none"><label for="x-none">None</label>
+          <input type="radio" name="tex" id="x-grain" value="grain" checked><label for="x-grain">Grain</label>
+          <input type="radio" name="tex" id="x-dots" value="dots"><label for="x-dots">Dots</label>
+        </div>
+      </div>
+    </div>
+  </aside>
+</main>
+
+<div class="modal" id="modal" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <h2 id="modal-title">Saved</h2>
+    <img id="modal-img" alt="Your saved pop art">
+    <div class="row">
+      <a id="dl" class="btn hot" href="#" download>Download PNG</a>
+      <button id="close" class="btn" type="button">Keep mixing</button>
+    </div>
+    <p class="hint">1800 × 1800 PNG. If no download starts, right-click or long-press the image and save it.</p>
+  </div>
+</div>
+
+<script>
+(() => {
+  'use strict';
+
+  // ---------- colour ----------
+  const COLORS = [
+    '#E8007D', // hot pink
+    '#FF5FB0', // bubblegum
+    '#FFD60A', // lemon
+    '#FF6200', // tangerine
+    '#E5162E', // fire red
+    '#00A39A', // teal
+    '#18C4E0', // cyan
+    '#2340FF', // klein blue
+    '#16206B', // navy
+    '#7B2FE0', // violet
+    '#C8A6FF', // lilac
+    '#A6E312', // lime
+    '#6FE3C1', // mint
+    '#FFB18A', // peach
+    '#3A3D41', // charcoal
+    '#151515', // black
+    '#FFFFFF', // white
+  ];
+  const WHITE = '#FFFFFF', BLACK = '#151515';
+  const BG_POOL = COLORS.filter(c => c !== WHITE);
+
+  const rgbOf = h => { const n = parseInt(h.slice(1), 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; };
+  const lumCache = new Map();
+  function lum(h) {
+    if (lumCache.has(h)) return lumCache.get(h);
+    const [r, g, b] = rgbOf(h).map(v => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); });
+    const L = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    lumCache.set(h, L);
+    return L;
+  }
+  function contrast(a, b) { const x = lum(a), y = lum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); }
+  function hue(h) {
+    const [r, g, b] = rgbOf(h).map(v => v / 255);
+    const mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn;
+    if (d < 0.15) return null; // greys and near-black
+    let H = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4;
+    return (H * 60 + 360) % 360;
+  }
+  function hueGap(a, b) {
+    const x = hue(a), y = hue(b);
+    if (x === null || y === null) return 0;
+    const d = Math.abs(x - y) % 360;
+    return Math.min(d, 360 - d);
+  }
+  // Pop pairs can be low in brightness contrast (pink on teal, cyan on orange) as long as the hues fight.
+  function popPair(a, b) {
+    if (a === b) return false;
+    const c = contrast(a, b);
+    return c >= 2.2 || (hueGap(a, b) >= 100 && c >= 1.12);
+  }
+  function inksFor(mode, bg) {
+    if (mode === 'qr') return COLORS.filter(c => c !== bg && lum(c) < lum(bg) && contrast(c, bg) >= 4);
+    return COLORS.filter(c => popPair(c, bg));
+  }
+  const pick = a => a[Math.floor(Math.random() * a.length)];
+
+  function rollTile(mode, avoid = new Set()) {
+    let pool = BG_POOL.filter(c => !avoid.has(c) && inksFor(mode, c).length);
+    if (!pool.length) pool = BG_POOL.filter(c => inksFor(mode, c).length);
+    const bg = pick(pool);
+    const ink = pick(inksFor(mode, bg));
+    const mids = COLORS.filter(c => c !== bg && c !== ink && popPair(c, bg) && popPair(c, ink));
+    const mid = mids.length ? pick(mids) : (lum(bg) > 0.4 ? BLACK : WHITE);
+    const small = contrast(WHITE, bg) >= 2.4 ? WHITE : BLACK;
+    return { bg, ink, mid, small, conn: Math.floor(Math.random() * 720) };
+  }
+
+  // ---------- state ----------
+  const $ = id => document.getElementById(id);
+  const els = {
+    top: $('t-top'), mid: $('t-mid'), bot: $('t-bot'), swap: $('t-swap'),
+    file: $('file'), fileName: $('file-name'), detail: $('detail'), detailOut: $('detail-out'),
+    url: $('q-url'), cap: $('q-cap'),
+    back: $('back'), random: $('random'), save: $('save'),
+    picks: $('picks'), strip: $('strip'), frame: $('frame'),
+    modal: $('modal'), modalImg: $('modal-img'), modalTitle: $('modal-title'), dl: $('dl'), close: $('close'),
+  };
+  const canvas = $('art');
+  const ctx = canvas.getContext('2d');
+  const SIZE = 1800;
+  const BIG_FONT = 'Anton, Impact, "Arial Narrow Bold", sans-serif';
+  const SMALL_FONT = 'Archivo, "Helvetica Neue", Arial, sans-serif';
+
+  const state = { mode: 'text', grid: 3, texture: 'grain', tiles: [], history: [] };
+  const picks = [];
+
+  function freshTiles() {
+    const used = new Set();
+    return Array.from({ length: 9 }, () => {
+      const t = rollTile(state.mode, used);
+      used.add(t.bg);
+      return t;
+    });
+  }
+  function snapshot() {
+    state.history.push(state.tiles.map(t => ({ ...t })));
+    if (state.history.length > 80) state.history.shift();
+    els.back.disabled = false;
+  }
+  function randomize() { snapshot(); state.tiles = freshTiles(); render(); }
+  function back() {
+    if (!state.history.length) return;
+    state.tiles = state.history.pop();
+    els.back.disabled = !state.history.length;
+    render();
+  }
+  function rerollTile(i) {
+    snapshot();
+    const n = state.grid * state.grid;
+    const avoid = new Set(state.tiles.slice(0, n).map(t => t.bg));
+    state.tiles[i] = rollTile(state.mode, avoid);
+    render();
+  }
+
+  // ---------- drawing ----------
+  function render() {
+    const n = state.grid, T = SIZE / n;
+    ctx.textBaseline = 'alphabetic';
+    ctx.textAlign = 'left';
+    for (let r = 0; r < n; r++) {
+      for (let c = 0; c < n; c++) {
+        const i = r * n + c, t = state.tiles[i], x = c * T, y = r * T;
+        ctx.save();
+        ctx.beginPath(); ctx.rect(x, y, T, T); ctx.clip();
+        ctx.fillStyle = t.bg; ctx.fillRect(x, y, T, T);
+        if (state.mode === 'image') {
+          drawImageTile(x, y, T, t);
+          if (state.texture === 'dots') drawDots(x, y, T, t.bg);
+        } else {
+          if (state.texture === 'dots') drawDots(x, y, T, t.bg);
+          if (state.mode === 'text') drawTextTile(x, y, T, t, i);
+          else drawQrTile(x, y, T, t);
+        }
+        ctx.restore();
+      }
+    }
+    if (state.texture === 'grain') drawGrain();
+  }
+
+  function drawDots(x, y, T, bg) {
+    const s = T / 38, rad = s * 0.27;
+    ctx.fillStyle = lum(bg) > 0.15 ? 'rgba(0,0,0,0.12)' : 'rgba(255,255,255,0.13)';
+    ctx.beginPath();
+    let row = 0;
+    for (let yy = s / 2; yy < T + s; yy += s, row++) {
+      for (let xx = (row % 2 ? s : s / 2); xx < T + s; xx += s) {
+        ctx.moveTo(x + xx + rad, y + yy);
+        ctx.arc(x + xx, y + yy, rad, 0, Math.PI * 2);
+      }
+    }
+    ctx.fill();
+  }
+
+  let grainPattern = null;
+  function drawGrain() {
+    if (!grainPattern) {
+      const g = document.createElement('canvas');
+      g.width = g.height = 256;
+      const gx = g.getContext('2d');
+      const d = gx.createImageData(256, 256);
+      for (let k = 0; k < d.data.length; k += 4) {
+        const v = Math.random() * 255;
+        d.data[k] = d.data[k + 1] = d.data[k + 2] = v; d.data[k + 3] = 255;
+      }
+      gx.putImageData(d, 0, 0);
+      grainPattern = ctx.createPattern(g, 'repeat');
+    }
+    ctx.save();
+    ctx.globalAlpha = 0.1;
+    ctx.globalCompositeOperation = 'overlay';
+    ctx.fillStyle = grainPattern;
+    ctx.fillRect(0, 0, SIZE, SIZE);
+    ctx.restore();
+  }
+
+  function spacedWidth(text, spacing) {
+    let w = 0;
+    for (const ch of text) w += ctx.measureText(ch).width + spacing;
+    return text.length ? w - spacing : 0;
+  }
+  function drawSpaced(text, x, y, spacing) {
+    for (const ch of text) { ctx.fillText(ch, x, y); x += ctx.measureText(ch).width + spacing; }
+  }
+  function setSmallFont(px) {
+    ctx.font = `800 ${px}px ${SMALL_FONT}`;
+    if ('fontStretch' in ctx) ctx.fontStretch = 'expanded';
+  }
+
+  function drawTextTile(x, y, T, t, i) {
+    let a = els.top.value.trim().toUpperCase();
+    let b = els.bot.value.trim().toUpperCase();
+    if (els.swap.checked && i % 2 === 1) [a, b] = [b, a];
+    const opts = els.mid.value.split('|').map(s => s.trim()).filter(Boolean);
+    const small = opts.length ? opts[t.conn % opts.length].toUpperCase() : '';
+
+    const padX = Math.round(T * 0.095), maxW = T - padX * 2;
+    ctx.font = `100px ${BIG_FONT}`;
+    if ('fontStretch' in ctx) ctx.fontStretch = 'normal';
+    const capH100 = ctx.measureText('H').actualBoundingBoxAscent || 72;
+    const bigs = [a, b].filter(Boolean);
+    const widest = Math.max(1, ...bigs.map(w => ctx.measureText(w).width));
+    const size = Math.min(100 * maxW / widest, 100 * (T * 0.24) / capH100);
+    const capH = capH100 * size / 100;
+
+    let ss = T * 0.062;
+    setSmallFont(ss);
+    let sp = ss * 0.08;
+    const sw = spacedWidth(small, sp);
+    if (sw > maxW) { ss *= maxW / sw; setSmallFont(ss); sp = ss * 0.08; }
+    const smallCap = ss * 0.72;
+
+    const items = [];
+    if (a) items.push({ kind: 'big', text: a, h: capH });
+    if (small) items.push({ kind: 'small', text: small, h: smallCap });
+    if (b) items.push({ kind: 'big', text: b, h: capH });
+    if (!items.length) return;
+
+    const gap = Math.max(T * 0.022, capH * 0.13);
+    const total = items.reduce((s, it) => s + it.h, 0) + gap * (items.length - 1);
+    let cy = y + (T - total) / 2;
+    for (const it of items) {
+      const base = cy + it.h;
+      if (it.kind === 'big') {
+        ctx.font = `${size}px ${BIG_FONT}`;
+        if ('fontStretch' in ctx) ctx.fontStretch = 'normal';
+        ctx.fillStyle = t.ink;
+        ctx.fillText(it.text, x + padX, base);
+      } else {
+        setSmallFont(ss);
+        ctx.fillStyle = t.small;
+        drawSpaced(it.text, x + padX, base, sp);
+      }
+      cy = base + gap;
+    }
+    if ('fontStretch' in ctx) ctx.fontStretch = 'normal';
+  }
+
+  // image → three flat tones (shadow = ink, middle = mid, highlight = background)
+  let srcImg = null, imgId = 0;
+  let levelCache = { key: '', levels: null };
+  const sample = (() => {
+    const c = document.createElement('canvas');
+    c.width = c.height = 600;
+    const g = c.getContext('2d');
+    g.fillStyle = '#fff'; g.fillRect(0, 0, 600, 600);
+    g.fillStyle = 'rgba(0,0,0,0.55)';
+    g.beginPath(); g.ellipse(320, 520, 200, 38, 0, 0, Math.PI * 2); g.fill();
+    const grd = g.createRadialGradient(220, 200, 0, 290, 280, 240);
+    grd.addColorStop(0, '#fff'); grd.addColorStop(0.45, '#9a9a9a'); grd.addColorStop(1, '#050505');
+    g.fillStyle = grd;
+    g.beginPath(); g.arc(300, 290, 215, 0, Math.PI * 2); g.fill();
+    return c;
+  })();
+
+  function getLevels(T) {
+    const detail = +els.detail.value;
+    const key = `${T}:${detail}:${imgId}`;
+    if (levelCache.key === key) return levelCache.levels;
+    const src = srcImg || sample;
+    const sw = src.naturalWidth || src.width, sh = src.naturalHeight || src.height;
+    const s = Math.min(sw, sh), sx = (sw - s) / 2, sy = (sh - s) / 2;
+    const lo = document.createElement('canvas');
+    lo.width = lo.height = detail;
+    const lg = lo.getContext('2d');
+    lg.fillStyle = '#fff'; lg.fillRect(0, 0, detail, detail);
+    lg.imageSmoothingQuality = 'high';
+    lg.drawImage(src, sx, sy, s, s, 0, 0, detail, detail);
+    const hi = document.createElement('canvas');
+    hi.width = hi.height = T;
+    const hg = hi.getContext('2d', { willReadFrequently: true });
+    hg.imageSmoothingEnabled = true; hg.imageSmoothingQuality = 'high';
+    hg.drawImage(lo, 0, 0, T, T);
+    const d = hg.getImageData(0, 0, T, T).data;
+    const N = T * T, L = new Uint8Array(N), hist = new Uint32Array(256);
+    for (let k = 0; k < N; k++) {
+      const v = (d[4 * k] * 0.299 + d[4 * k + 1] * 0.587 + d[4 * k + 2] * 0.114) | 0;
+      L[k] = v; hist[v]++;
+    }
+    let acc = 0, t1 = -1, t2 = 254;
+    for (let v = 0; v < 256; v++) {
+      acc += hist[v];
+      if (t1 < 0 && acc >= N * 0.34) t1 = v;
+      if (acc >= N * 0.67) { t2 = v; break; }
+    }
+    t2 = Math.min(t2, 254);
+    t1 = Math.min(Math.max(t1, 0), t2 - 1);
+    for (let k = 0; k < N; k++) L[k] = L[k] <= t1 ? 0 : L[k] <= t2 ? 1 : 2;
+    levelCache = { key, levels: L };
+    return L;
+  }
+
+  const tileCanvas = document.createElement('canvas');
+  function drawImageTile(x, y, T, t) {
+    const L = getLevels(T);
+    if (tileCanvas.width !== T) { tileCanvas.width = tileCanvas.height = T; }
+    const tc = tileCanvas.getContext('2d');
+    const img = tc.createImageData(T, T);
+    const px = new Uint32Array(img.data.buffer);
+    const tones = [t.ink, t.mid, t.bg].map(h => { const [r, g, b] = rgbOf(h); return ((255 << 24) | (b << 16) | (g << 8) | r) >>> 0; });
+    for (let k = 0; k < L.length; k++) px[k] = tones[L[k]];
+    tc.putImageData(img, 0, 0);
+    ctx.drawImage(tileCanvas, x, y);
+  }
+
+  // QR
+  let qrCache = { key: null, qr: null };
+  function getQr() {
+    const url = els.url.value.trim();
+    if (qrCache.key === url) return qrCache.qr;
+    let qr = null;
+    if (url && window.qrcode) {
+      try {
+        if (qrcode.stringToBytesFuncs && qrcode.stringToBytesFuncs['UTF-8']) qrcode.stringToBytes = qrcode.stringToBytesFuncs['UTF-8'];
+        qr = qrcode(0, 'M'); qr.addData(url); qr.make();
+      } catch (e) { qr = null; }
+    }
+    qrCache = { key: url, qr };
+    return qr;
+  }
+  function drawQrTile(x, y, T, t) {
+    const qr = getQr();
+    if (!qr) {
+      setSmallFont(T * 0.05);
+      ctx.fillStyle = t.small;
+      const msg = !window.qrcode ? 'QR LOADING…' : (els.url.value.trim() ? 'LINK TOO LONG' : 'ADD A LINK');
+      drawSpaced(msg, x + T * 0.095, y + T * 0.52, T * 0.005);
+      return;
+    }
+    const n = qr.getModuleCount();
+    const cap = els.cap.value.trim().toUpperCase();
+    const area = cap ? T * 0.62 : T * 0.74;
+    const m = Math.max(1, Math.floor(area / n));
+    const qs = m * n;
+    let capSize = 0, capH = 0, gap = 0;
+    if (cap) {
+      ctx.font = `100px ${BIG_FONT}`;
+      if ('fontStretch' in ctx) ctx.fontStretch = 'normal';
+      const capH100 = ctx.measureText('H').actualBoundingBoxAscent || 72;
+      const w100 = ctx.measureText(cap).width || 1;
+      capSize = Math.min(100 * qs / w100, 100 * (T * 0.11) / capH100);
+      capH = capH100 * capSize / 100;
+      gap = T * 0.05;
+    }
+    const totalH = qs + gap + capH;
+    const qx = x + Math.round((T - qs) / 2);
+    const qy = y + Math.round((T - totalH) / 2);
+    ctx.fillStyle = t.ink;
+    for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) {
+      if (qr.isDark(r, c)) ctx.fillRect(qx + c * m, qy + r * m, m, m);
+    }
+    if (cap) {
+      ctx.font = `${capSize}px ${BIG_FONT}`;
+      ctx.textAlign = 'center';
+      ctx.fillText(cap, x + T / 2, qy + qs + gap + capH);
+      ctx.textAlign = 'left';
+    }
+  }
+
+  // ---------- save ----------
+  function stamp() {
+    const d = new Date(), p = v => String(v).padStart(2, '0');
+    return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
+  }
+  function save() {
+    canvas.toBlob(blob => {
+      if (!blob) return;
+      const url = URL.createObjectURL(blob);
+      const name = `popart-${stamp()}.png`;
+      picks.unshift({ url, name });
+      if (picks.length > 30) URL.revokeObjectURL(picks.pop().url);
+      renderPicks();
+      try {
+        const a = document.createElement('a');
+        a.href = url; a.download = name;
+        document.body.appendChild(a); a.click(); a.remove();
+      } catch (e) { /* the modal still shows the image */ }
+      openModal(picks[0], 'Saved');
+    }, 'image/png');
+  }
+  function renderPicks() {
+    els.picks.hidden = !picks.length;
+    els.strip.replaceChildren(...picks.map(p => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.setAttribute('aria-label', `Open ${p.name}`);
+      const im = document.createElement('img');
+      im.src = p.url; im.alt = '';
+      b.appendChild(im);
+      b.addEventListener('click', () => openModal(p, 'Your pick'));
+      return b;
+    }));
+  }
+  let lastFocus = null;
+  function openModal(p, title) {
+    lastFocus = document.activeElement;
+    els.modalTitle.textContent = title;
+    els.modalImg.src = p.url;
+    els.dl.href = p.url;
+    els.dl.download = p.name;
+    els.modal.hidden = false;
+    els.close.focus();
+  }
+  function closeModal() {
+    els.modal.hidden = true;
+    if (lastFocus && lastFocus.focus) lastFocus.focus();
+  }
+
+  // ---------- inputs ----------
+  function setMode(m) {
+    const enteringQr = m === 'qr' && state.mode !== 'qr';
+    state.mode = m;
+    document.querySelectorAll('[data-mode]').forEach(g => { g.hidden = g.dataset.mode !== m; });
+    $('m-' + m).checked = true;
+    if (enteringQr) { snapshot(); state.tiles = freshTiles(); }
+    render();
+  }
+  document.querySelectorAll('input[name="mode"]').forEach(r => r.addEventListener('change', () => setMode(r.value)));
+  document.querySelectorAll('input[name="grid"]').forEach(r => r.addEventListener('change', () => { state.grid = +r.value; render(); }));
+  document.querySelectorAll('input[name="tex"]').forEach(r => r.addEventListener('change', () => { state.texture = r.value; render(); }));
+  [els.top, els.mid, els.bot, els.url, els.cap].forEach(el => el.addEventListener('input', render));
+  els.swap.addEventListener('change', render);
+  els.detail.addEventListener('input', () => { els.detailOut.textContent = els.detail.value; render(); });
+
+  function loadFile(file) {
+    if (!file || !/^image\//.test(file.type)) return;
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      srcImg = img; imgId++;
+      els.fileName.textContent = `Using ${file.name || 'pasted image'}. Drop or paste another to swap it.`;
+      setMode('image');
+    };
+    img.onerror = () => { els.fileName.textContent = 'That file could not be read as an image. Try a JPG or PNG.'; };
+    img.src = url;
+  }
+  els.file.addEventListener('change', () => loadFile(els.file.files[0]));
+  window.addEventListener('dragover', e => { e.preventDefault(); els.frame.classList.add('drop'); });
+  window.addEventListener('dragleave', e => { if (!e.relatedTarget) els.frame.classList.remove('drop'); });
+  window.addEventListener('drop', e => {
+    e.preventDefault(); els.frame.classList.remove('drop');
+    const f = e.dataTransfer && e.dataTransfer.files[0];
+    if (f) loadFile(f);
+  });
+  window.addEventListener('paste', e => {
+    const item = [...(e.clipboardData ? e.clipboardData.items : [])].find(it => it.type.startsWith('image/'));
+    if (item) { e.preventDefault(); loadFile(item.getAsFile()); }
+  });
+
+  els.random.addEventListener('click', randomize);
+  els.back.addEventListener('click', back);
+  els.save.addEventListener('click', save);
+  els.close.addEventListener('click', closeModal);
+  els.modal.addEventListener('click', e => { if (e.target === els.modal) closeModal(); });
+
+  canvas.addEventListener('click', e => {
+    const r = canvas.getBoundingClientRect(), n = state.grid;
+    const c = Math.min(n - 1, Math.max(0, Math.floor((e.clientX - r.left) / r.width * n)));
+    const row = Math.min(n - 1, Math.max(0, Math.floor((e.clientY - r.top) / r.height * n)));
+    rerollTile(row * n + c);
+  });
+
+  const typing = el => el && el.matches && el.matches('input[type="text"], input[type="url"], input:not([type]), textarea');
+  document.addEventListener('keydown', e => {
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    if (!els.modal.hidden) { if (e.key === 'Escape') closeModal(); return; }
+    if (typing(e.target)) return;
+    if (e.code === 'Space') { e.preventDefault(); randomize(); }
+    else if (e.key === 'z' || e.key === 'Z' || e.key === 'Backspace') { e.preventDefault(); back(); }
+    else if (e.key === 's' || e.key === 'S') { e.preventDefault(); save(); }
+  });
+  document.addEventListener('keyup', e => { if (e.code === 'Space' && !typing(e.target)) e.preventDefault(); });
+
+  // ---------- start ----------
+  state.tiles = freshTiles();
+  render();
+  if (document.fonts) {
+    Promise.all([document.fonts.load(`100px Anton`), document.fonts.load(`800 40px Archivo`)])
+      .then(render, () => {});
+    document.fonts.ready.then(render);
+  }
+  if (!window.qrcode) window.addEventListener('load', () => { qrCache.key = null; if (state.mode === 'qr') render(); });
+})();
+</script>
+</body>
+</html>
