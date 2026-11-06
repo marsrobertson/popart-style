@@ -270,6 +270,7 @@ small { color: var(--muted); font-size: 13px; }
         <input type="radio" name="preset" id="p-riso" value="riso"><label for="p-riso">Riso</label>
         <input type="radio" name="preset" id="p-neon" value="neon"><label for="p-neon">Neon</label>
       </div>
+      <small id="preset-note">All 17 colours, mixed freely.</small>
     </div>
 
     <div class="two">
@@ -340,6 +341,12 @@ small { color: var(--muted); font-size: 13px; }
     neon: ['#39FF14', '#FF2BD6', '#00F0FF', '#FFF200', '#FF5E00', '#B026FF', '#FF3864', '#0B0B14', '#1B1350', '#FFFFFF'],
   };
   const KNOWN = new Set(Object.values(PRESETS).flat());
+  const PRESET_NOTES = {
+    all: 'All 17 colours, mixed freely.',
+    warhol: 'Hot screen-print colours: pink, yellow, orange, turquoise, lilac.',
+    riso: 'Risograph-style inks, a little softer, on off-white paper.',
+    neon: 'Electric tube colours, often on near-black.',
+  };
 
   const rgbOf = h => { const n = parseInt(h.slice(1), 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; };
   const lumCache = new Map();
@@ -465,7 +472,7 @@ small { color: var(--muted); font-size: 13px; }
   }
   const copyTiles = ts => ts.map(t => ({ ...t }));
   function snapshot() {
-    state.history.push({ tiles: copyTiles(state.tiles), cands: state.cands.map(copyTiles), wall: state.wall });
+    state.history.push({ tiles: copyTiles(state.tiles), cands: state.cands.map(copyTiles), wall: state.wall, preset: state.preset, mode: state.mode });
     if (state.history.length > 80) state.history.shift();
     els.back.disabled = false;
   }
@@ -479,6 +486,10 @@ small { color: var(--muted); font-size: 13px; }
     if (!state.history.length) return;
     const h = state.history.pop();
     state.tiles = h.tiles; state.cands = h.cands; state.wall = h.wall;
+    // the palette and mode come back too, so the controls always match what's on screen
+    state.preset = h.preset; syncPreset();
+    // tiles rolled outside QR mode may not scan, so undoing back past a QR switch leaves QR mode
+    if (state.mode === 'qr' && h.mode !== 'qr') { state.mode = h.mode; syncMode(); }
     els.back.disabled = !state.history.length;
     syncWall(); renderHits(); render();
   }
@@ -523,7 +534,7 @@ small { color: var(--muted); font-size: 13px; }
   function layout() {
     const n = state.grid, k = state.wall;
     if (k === 1) return { k, n, T: SIZE / n, cand: SIZE, gap: 0, size: SIZE };
-    const gap = Math.round(SIZE * 0.014);
+    const gap = 0; // artworks butt up against each other, like one big print
     const T = Math.floor((SIZE - gap * (k - 1)) / (k * n)); // whole-pixel tiles keep edges crisp
     const cand = T * n;
     return { k, n, T, cand, gap, size: cand * k + gap * (k - 1) };
@@ -846,16 +857,23 @@ small { color: var(--muted); font-size: 13px; }
   }
 
   // ---------- inputs ----------
+  function syncMode() {
+    document.querySelectorAll('[data-mode]').forEach(g => { g.hidden = g.dataset.mode !== state.mode; });
+    $('m-' + state.mode).checked = true;
+  }
+  function syncPreset() {
+    $('p-' + state.preset).checked = true;
+    $('preset-note').textContent = PRESET_NOTES[state.preset];
+  }
   function setMode(m) {
     const enteringQr = m === 'qr' && state.mode !== 'qr';
+    if (enteringQr) snapshot();
     state.mode = m;
-    document.querySelectorAll('[data-mode]').forEach(g => { g.hidden = g.dataset.mode !== m; });
-    $('m-' + m).checked = true;
+    syncMode();
     if (enteringQr) {
       // a locked tile only survives the switch if its colours still scan
       state.locked.forEach(i => { const t = state.tiles[i]; if (!t || !qrSafe(t.ink, t.bg)) state.locked.delete(i); });
       renderHits();
-      snapshot();
       reroll(true);
     }
     render();
@@ -863,8 +881,9 @@ small { color: var(--muted); font-size: 13px; }
   document.querySelectorAll('input[name="mode"]').forEach(r => r.addEventListener('change', () => setMode(r.value)));
   document.querySelectorAll('input[name="grid"]').forEach(r => r.addEventListener('change', () => { state.grid = +r.value; renderHits(); render(); }));
   document.querySelectorAll('input[name="preset"]').forEach(r => r.addEventListener('change', () => {
-    state.preset = r.value;
     snapshot();
+    state.preset = r.value;
+    syncPreset();
     reroll(true);
     render();
   }));
