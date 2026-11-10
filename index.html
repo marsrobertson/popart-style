@@ -5,7 +5,21 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Pop Art Mixer</title>
 <meta name="claude:viewport-fit-sides" content="cover">
-<meta name="description" content="Press random until the colours look good, then save. A 3x3 pop art grid from your text, image or QR code.">
+<meta name="description" content="Press Random until the colours look good, then save it or buy the print. Pop art from your text, image or QR code.">
+<meta name="theme-color" content="#FFD60A">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='16' height='16' fill='%23E8007D'/%3E%3Crect x='16' width='16' height='16' fill='%23FFD60A'/%3E%3Crect y='16' width='16' height='16' fill='%2318C4E0'/%3E%3Crect x='16' y='16' width='16' height='16' fill='%23151515'/%3E%3Ccircle cx='8' cy='8' r='4.6' fill='%23FFD60A'/%3E%3Ccircle cx='24' cy='8' r='4.6' fill='%232340FF'/%3E%3Ccircle cx='8' cy='24' r='4.6' fill='%23151515'/%3E%3Ccircle cx='24' cy='24' r='4.6' fill='%23E8007D'/%3E%3C/svg%3E">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<!-- Link previews need full addresses. Change these four if the page is not hosted at this address. -->
+<meta property="og:type" content="website">
+<meta property="og:title" content="Pop Art Mixer">
+<meta property="og:description" content="Press Random until the colours look good, then save it or buy the print.">
+<meta property="og:url" content="https://marsrobertson.github.io/popart-style/">
+<meta property="og:image" content="https://marsrobertson.github.io/popart-style/preview.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="A 3 by 3 grid of pop art tiles next to the words Pop Art Mixer">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://marsrobertson.github.io/popart-style/preview.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wdth,wght@62..125,400..900&display=swap">
@@ -226,8 +240,46 @@ small { color: var(--muted); font-size: 13px; }
 .row4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
 .row4 .btn { font-size: 17px; padding-inline: 6px; }
 @media (max-width: 480px) { .row4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } .nav { width: 32px; } }
-#buy-img { width: min(100%, 320px); align-self: center; }
 .buy-msg { margin: 0; font-weight: 600; }
+.orders-btn { margin-left: auto; font-size: 16px; padding: 8px 12px; }
+.orders-btn b { font-weight: 400; background: var(--ink); color: var(--pop); padding: 0 7px; }
+.co { display: grid; grid-template-columns: minmax(0, 260px) minmax(0, 1fr); gap: 16px; align-items: start; }
+.co-side { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+@media (max-width: 620px) { .co { grid-template-columns: minmax(0, 1fr); } .co > img { width: min(100%, 220px); justify-self: center; } }
+.seg.sizes label { display: flex; flex-direction: column; gap: 2px; padding: 8px 4px; }
+.seg.sizes label span { font: 800 14px var(--body); letter-spacing: 0; text-transform: none; }
+.total {
+  display: flex; justify-content: space-between; align-items: baseline; border-top: 2px dashed var(--ink); padding-top: 10px;
+  font-family: var(--display); text-transform: uppercase; letter-spacing: 0.05em; font-size: 18px;
+}
+.total b { font-weight: 400; font-size: 30px; }
+.done { display: flex; flex-direction: column; gap: 14px; }
+.done-head { display: flex; gap: 16px; align-items: center; }
+.tick {
+  flex: 0 0 auto; width: 56px; height: 56px; display: grid; place-items: center; transform: rotate(-4deg);
+  background: var(--pop); border: 3px solid var(--ink); box-shadow: 4px 4px 0 var(--ink);
+}
+.tick svg { width: 34px; height: 34px; display: block; }
+.done-head h3 { font-family: var(--display); font-weight: 400; text-transform: uppercase; font-size: 30px; line-height: 1.05; margin: 0; }
+.done-head p { margin: 2px 0 0; font-weight: 650; }
+.receipt { display: grid; grid-template-columns: 132px minmax(0, 1fr); gap: 14px; align-items: center; border: 3px solid var(--ink); padding: 12px; }
+.receipt dl { margin: 0; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px 14px; align-items: center; }
+.receipt dt { font-family: var(--display); text-transform: uppercase; letter-spacing: 0.06em; font-size: 13px; color: var(--muted); }
+.receipt dd { margin: 0; font-weight: 700; overflow-wrap: anywhere; }
+.ref { font: 800 16px ui-monospace, "SF Mono", Menlo, Consolas, monospace; background: var(--pop); border: 2px solid var(--ink); padding: 1px 6px; margin-right: 8px; }
+@media (max-width: 440px) { .receipt { grid-template-columns: minmax(0, 1fr); } .receipt img { width: 132px; } }
+.orders { list-style: none; margin: 0; padding: 0 6px 6px 0; display: flex; flex-direction: column; gap: 12px; }
+.order {
+  display: grid; grid-template-columns: 64px minmax(0, 1fr) auto; gap: 12px; align-items: center; width: 100%;
+  font: inherit; text-align: left; color: var(--ink); background: var(--paper); cursor: pointer;
+  border: 3px solid var(--ink); box-shadow: 3px 3px 0 var(--ink); padding: 8px;
+}
+.order:focus-visible { outline: 3px solid var(--hot); outline-offset: 2px; }
+.order img { border-width: 2px; }
+.order b { display: block; font-weight: 800; }
+.chip { font: 800 12px var(--body); text-transform: uppercase; border: 2px solid var(--ink); padding: 2px 6px; white-space: nowrap; }
+.chip.good { background: var(--pop); }
+@media (max-width: 440px) { .order { grid-template-columns: 64px minmax(0, 1fr); } .order .chip { grid-column: 2; justify-self: start; } }
 
 .taste-row { display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
 .linkbtn {
@@ -236,14 +288,15 @@ small { color: var(--muted); font-size: 13px; }
 }
 .linkbtn:focus-visible { outline: 3px solid var(--hot); outline-offset: 2px; }
 
-@media (prefers-reduced-motion: reduce) { .btn, .lock { transition: none; } .logo mark { transform: none; } .lock.nudge { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .btn, .lock { transition: none; } .logo mark, .tick { transform: none; } .lock.nudge { animation: none; } }
 </style>
 </head>
 <body>
 
 <header class="top">
   <h1 class="logo">POP ART <mark>MIXER</mark></h1>
-  <p class="tag">Press random until it looks good. Then save.</p>
+  <p class="tag">Press random until it looks good. Then save it or buy the print.</p>
+  <button id="orders-open" class="btn orders-btn" type="button" hidden>Orders <b id="orders-n">0</b></button>
 </header>
 
 <main class="app">
@@ -372,22 +425,60 @@ small { color: var(--muted); font-size: 13px; }
   </div>
 </div>
 
-<div class="modal" id="buy" hidden>
-  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="buy-title">
-    <h2 id="buy-title">Buy this print</h2>
-    <img id="buy-img" alt="The artwork you are buying">
-    <span class="label">Size</span>
-    <div class="seg" role="radiogroup" aria-label="Print size">
-      <input type="radio" name="size" id="s30" value="30x30cm"><label for="s30">30×30 cm</label>
-      <input type="radio" name="size" id="s50" value="50x50cm" checked><label for="s50">50×50 cm</label>
-      <input type="radio" name="size" id="s70" value="70x70cm"><label for="s70">70×70 cm</label>
+<div class="modal" id="orders" hidden>
+  <div class="sheet wide" role="dialog" aria-modal="true" aria-labelledby="orders-title">
+    <div class="sheet-head">
+      <h2 id="orders-title">Your orders</h2>
+      <button id="orders-close" class="btn" type="button">Close</button>
     </div>
-    <p class="buy-msg" id="buy-msg">Checkout isn't open yet. Reserve this print and this exact artwork goes into the print queue.</p>
-    <div class="row">
-      <button id="buy-go" class="btn hot" type="button">Reserve this print</button>
-      <a id="buy-link" class="btn hot" href="#" target="_blank" rel="noopener" hidden>Go to checkout</a>
-      <button id="buy-save" class="btn" type="button">Save PNG</button>
-      <button id="buy-close" class="btn" type="button">Not now</button>
+    <ul class="orders" id="orders-list"></ul>
+    <p class="hint">Only you and the shop can see these. Open one for its reference and status.</p>
+  </div>
+</div>
+
+<div class="modal" id="buy" hidden>
+  <div class="sheet wide" role="dialog" aria-modal="true" aria-labelledby="buy-title">
+    <div class="sheet-head">
+      <h2 id="buy-title">Buy this print</h2>
+      <button id="buy-close" class="btn" type="button">Close</button>
+    </div>
+
+    <div class="co" id="buy-form">
+      <img id="buy-img" alt="The artwork you are buying">
+      <div class="co-side">
+        <span class="label">Print size</span>
+        <div class="seg sizes" id="buy-sizes" role="radiogroup" aria-label="Print size"></div>
+        <label class="field" id="buy-email-field"><span>Email</span>
+          <input type="email" id="buy-email" autocomplete="email" placeholder="you@example.com" maxlength="120">
+          <small>Saved with the order so the shop can reach you about it.</small></label>
+        <div class="total"><span>Total</span><b id="buy-total"></b></div>
+        <p class="buy-msg" id="buy-msg" role="status"></p>
+        <button id="buy-go" class="btn hot buy-big" type="button">Reserve this print</button>
+        <button id="buy-save" class="btn" type="button">Just save the PNG</button>
+      </div>
+    </div>
+
+    <div class="done" id="buy-done" hidden>
+      <div class="done-head">
+        <span class="tick" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 12.5l5.2 5.2L20 6.8" fill="none" stroke="currentColor" stroke-width="3.6"/></svg></span>
+        <div><h3 id="done-title">Reserved</h3><p id="done-sub"></p></div>
+      </div>
+      <div class="receipt">
+        <img id="done-img" alt="The artwork in this order">
+        <dl>
+          <dt>Reference</dt><dd><span class="ref" id="done-ref"></span><button type="button" class="linkbtn" id="done-copy">Copy</button></dd>
+          <dt>Print</dt><dd id="done-item"></dd>
+          <dt>Total</dt><dd id="done-total"></dd>
+          <dt>Status</dt><dd id="done-status"></dd>
+          <dt>Placed</dt><dd id="done-date"></dd>
+        </dl>
+      </div>
+      <a id="done-pay" class="btn hot buy-big" href="#" target="_blank" rel="noopener" hidden>Pay now</a>
+      <p class="buy-msg" id="done-next" role="status"></p>
+      <div class="row">
+        <button id="done-save" class="btn" type="button">Save PNG</button>
+        <button id="done-close" class="btn" type="button">Keep mixing</button>
+      </div>
     </div>
   </div>
 </div>
@@ -528,7 +619,13 @@ small { color: var(--muted); font-size: 13px; }
     url: $('q-url'), cap: $('q-cap'), hits: $('hits'),
     wall: $('wall'), wallOut: $('wall-out'), modalSize: $('modal-size'), buyMain: $('buy-main'),
     zoom: $('zoom'), zoomArt: $('zoom-art'), zoomTitle: $('zoom-title'), zoomLock: $('zoom-lock'), zoomRoll: $('zoom-roll'),
-    buy: $('buy'), buyImg: $('buy-img'), buyTitle: $('buy-title'), buyMsg: $('buy-msg'), buyGo: $('buy-go'), buyLink: $('buy-link'),
+    buy: $('buy'), buyImg: $('buy-img'), buyTitle: $('buy-title'), buyMsg: $('buy-msg'), buyGo: $('buy-go'),
+    buyForm: $('buy-form'), buyDone: $('buy-done'), buySizes: $('buy-sizes'), buyTotal: $('buy-total'),
+    buyEmail: $('buy-email'), buyEmailField: $('buy-email-field'),
+    doneTitle: $('done-title'), doneSub: $('done-sub'), doneImg: $('done-img'), doneRef: $('done-ref'), doneItem: $('done-item'),
+    doneTotal: $('done-total'), doneStatus: $('done-status'), doneDate: $('done-date'), donePay: $('done-pay'),
+    doneNext: $('done-next'), doneSave: $('done-save'), doneCopy: $('done-copy'),
+    orders: $('orders'), ordersOpen: $('orders-open'), ordersN: $('orders-n'), ordersList: $('orders-list'),
     tasteOn: $('taste-on'), tasteCount: $('taste-count'), tasteReset: $('taste-reset'),
     back: $('back'), random: $('random'), save: $('save'),
     picks: $('picks'), strip: $('strip'), frame: $('frame'),
@@ -540,9 +637,21 @@ small { color: var(--muted); font-size: 13px; }
   let ctx = mainCtx;
   function withCtx(c, fn) { const prev = ctx; ctx = c; try { fn(); } finally { ctx = prev; } }
 
-  // Real checkout: paste a Stripe Payment Link or print-shop URL here and Buy sends people to it.
-  // Left empty, Buy reserves the artwork in the owner-only print queue instead.
-  const SHOP = { checkoutUrl: '' };
+  // ---------- shop settings ----------
+  // Prices are placeholders: set your own. `payLink` takes a Stripe Payment Link (https://buy.stripe.com/...),
+  // one per size because each link carries its own price. With no link, Buy reserves the print and charges nothing.
+  // Never put a Stripe secret key (sk_...) in this file: everyone who opens the page can read it.
+  const SHOP = {
+    currency: 'GBP',
+    sizes: [
+      { id: '30x30cm', label: '30×30 cm', price: 45, payLink: '' },
+      { id: '50x50cm', label: '50×50 cm', price: 75, payLink: '' },
+      { id: '70x70cm', label: '70×70 cm', price: 120, payLink: '' },
+    ],
+    // For a self-hosted copy with its own server: the page POSTs each order here as JSON and, if the reply is
+    // {"url": "https://..."} (for example a Stripe Checkout Session made with the secret key), sends the buyer there to pay.
+    orderEndpoint: '',
+  };
   const SIZE = 1800;
   const BIG_FONT = 'Anton, Impact, "Arial Narrow Bold", sans-serif';
   const SMALL_FONT = 'Archivo, "Helvetica Neue", Arial, sans-serif';
@@ -779,19 +888,24 @@ small { color: var(--muted); font-size: 13px; }
     return c;
   })();
 
-  function getLevels(T) {
-    const detail = +els.detail.value;
-    const key = `${T}:${detail}:${imgId}`;
-    if (levelCache.key === key) return levelCache.levels;
+  // the centre square of the source image, shrunk to `px` pixels a side
+  function squareCrop(px) {
     const src = srcImg || sample;
     const sw = src.naturalWidth || src.width, sh = src.naturalHeight || src.height;
     const s = Math.min(sw, sh), sx = (sw - s) / 2, sy = (sh - s) / 2;
     const lo = document.createElement('canvas');
-    lo.width = lo.height = detail;
+    lo.width = lo.height = px;
     const lg = lo.getContext('2d');
-    lg.fillStyle = '#fff'; lg.fillRect(0, 0, detail, detail);
+    lg.fillStyle = '#fff'; lg.fillRect(0, 0, px, px);
     lg.imageSmoothingQuality = 'high';
-    lg.drawImage(src, sx, sy, s, s, 0, 0, detail, detail);
+    lg.drawImage(src, sx, sy, s, s, 0, 0, px, px);
+    return lo;
+  }
+  function getLevels(T) {
+    const detail = +els.detail.value;
+    const key = `${T}:${detail}:${imgId}`;
+    if (levelCache.key === key) return levelCache.levels;
+    const lo = squareCrop(detail);
     const hi = document.createElement('canvas');
     hi.width = hi.height = T;
     const hg = hi.getContext('2d', { willReadFrequently: true });
@@ -1161,82 +1275,250 @@ small { color: var(--muted); font-size: 13px; }
   });
   els.zoom.addEventListener('click', e => { if (e.target === els.zoom) closeZoom(); });
 
-  // ---------- buy ----------
-  let dbCap = null, userCap = null, buying = null, buyFocus = null;
+  // ---------- buy: checkout, confirmation, orders ----------
+  let dbCap = null, userCap = null, buying = null, buyFocus = null, myOrders = [];
+  const EMAIL_KEY = 'popart-mixer-email';
+  const STATUS = {
+    reserved: 'Reserved, not paid', awaiting_payment: 'Waiting for payment', checkout: 'Waiting for payment',
+    paid: 'Paid', printing: 'Being printed', shipped: 'Shipped', cancelled: 'Cancelled',
+  };
+  const PAYABLE = new Set(['reserved', 'awaiting_payment', 'checkout']);
+  const statusLabel = s => STATUS[s] || 'In progress';
+  function money(v, cur = SHOP.currency) {
+    if (typeof v !== 'number') return 'Price confirmed at checkout';
+    try {
+      return new Intl.NumberFormat(undefined, { style: 'currency', currency: cur, maximumFractionDigits: Number.isInteger(v) ? 0 : 2 }).format(v);
+    } catch (e) { return `${v} ${cur}`; }
+  }
+  // Short order reference without look-alike characters (no 0/O, 1/I/L). It also goes to Stripe as client_reference_id.
+  const REF_ABC = '23456789ABCDEFGHJKMNPQRSTUVWXYZ';
+  const newRef = () => 'PM-' + Array.from(crypto.getRandomValues(new Uint8Array(6)), b => REF_ABC[b % REF_ABC.length]).join('');
+  const canOrder = () => !!(SHOP.orderEndpoint || dbCap);
+  const sizeOf = id => SHOP.sizes.find(s => s.id === id);
+  const pickedSize = () => { const r = document.querySelector('input[name="size"]:checked'); return sizeOf(r && r.value) || SHOP.sizes[0]; };
+  const paysNow = s => !!(s.payLink || SHOP.orderEndpoint);
+  function payUrlFor(order) {
+    if (!PAYABLE.has(order.status)) return '';
+    if (order.payUrl) return order.payUrl;
+    const s = sizeOf(order.size), link = s && s.payLink;
+    return link ? link + (link.includes('?') ? '&' : '?') + 'client_reference_id=' + encodeURIComponent(order.ref) : '';
+  }
+  // JPEG data URL that fits a size budget, so an order always fits in one stored document
+  function jpegUnder(c, maxChars) {
+    let q = 0.82;
+    for (let i = 0; i < 8; i++) {
+      const url = c.toDataURL('image/jpeg', q);
+      if (url.length <= maxChars) return url;
+      if (q > 0.6) q -= 0.12;
+      else {
+        const s = document.createElement('canvas');
+        s.width = s.height = Math.round(c.width * 0.75);
+        s.getContext('2d').drawImage(c, 0, 0, s.width, s.height);
+        c = s;
+      }
+    }
+    return c.toDataURL('image/jpeg', 0.5);
+  }
   function recipe(order) {
     return {
       mode: state.mode, preset: state.preset, grid: state.grid, texture: state.texture,
       text: state.mode === 'text' ? { top: els.top.value, mid: els.mid.value, bot: els.bot.value, swap: els.swap.checked } : null,
       qr: state.mode === 'qr' ? { url: els.url.value, caption: els.cap.value } : null,
+      image: state.mode === 'image' ? { detail: +els.detail.value, sample: !srcImg } : null,
       tiles: order.tiles || null, wall: order.kind === 'wall' ? order.k : 1, cands: order.cands || null,
     };
   }
+
+  els.buySizes.innerHTML = SHOP.sizes.map((s, i) =>
+    `<input type="radio" name="size" id="sz${i}" value="${s.id}"${i === Math.min(1, SHOP.sizes.length - 1) ? ' checked' : ''}>` +
+    `<label for="sz${i}">${s.label}<span>${money(s.price)}</span></label>`).join('');
+  els.buySizes.addEventListener('change', syncCheckout);
+  try { els.buyEmail.value = localStorage.getItem(EMAIL_KEY) || ''; } catch (e) { /* storage blocked */ }
+  els.buyEmail.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); els.buyGo.click(); } });
+
   function openBuy(order) {
     buying = order;
-    buyFocus = document.activeElement;
+    buying.ref = newRef();
+    if (els.buy.hidden) buyFocus = document.activeElement;
     const c = document.createElement('canvas');
     if (order.kind === 'wall') paint(c, order.cands, order.k, 640); else paint(c, [order.tiles], 1, 480);
-    order.thumb = c.toDataURL('image/jpeg', 0.82);
+    order.thumb = jpegUnder(c, 70000);
     els.buyImg.src = order.thumb;
     els.buyTitle.textContent = order.kind === 'wall' ? 'Buy this wall as one print' : 'Buy this print';
-    const checkout = !!SHOP.checkoutUrl;
-    els.buyLink.hidden = !checkout;
-    els.buyGo.hidden = checkout;
-    els.buyGo.disabled = false;
-    if (checkout) {
-      els.buyLink.href = SHOP.checkoutUrl;
-      els.buyMsg.textContent = 'Checkout opens in a new tab. Your artwork is saved with the order so it prints exactly like this.';
-    } else if (dbCap) {
-      els.buyMsg.textContent = "Checkout isn't open yet. Reserve this print and this exact artwork goes into the print queue.";
-    } else {
-      els.buyGo.disabled = true;
-      els.buyMsg.textContent = "Checkout isn't connected on this copy of the page yet. Save the PNG for now.";
-    }
+    els.buyForm.hidden = false;
+    els.buyDone.hidden = true;
+    syncCheckout();
     els.buy.hidden = false;
-    (checkout ? els.buyLink : els.buyGo.disabled ? $('buy-save') : els.buyGo).focus();
+    (els.buyGo.hidden ? $('buy-save') : els.buyGo).focus();
+  }
+  function syncCheckout() {
+    if (!buying || els.buyForm.hidden) return;
+    const s = pickedSize(), ok = canOrder(), pay = paysNow(s);
+    els.buyTotal.textContent = money(s.price);
+    els.buyGo.hidden = !ok;
+    els.buyGo.disabled = false;
+    els.buyGo.textContent = pay ? 'Continue to payment' : 'Reserve this print';
+    els.buyEmailField.hidden = !ok || pay; // Stripe asks for the email itself
+    const photo = state.mode === 'image' && srcImg ? ' Your photo is saved with it for printing.' : '';
+    els.buyMsg.textContent = !ok ? "This copy of the page can't take orders yet. Save the PNG for now."
+      : pay ? 'Next: card payment with Stripe, in a new tab. This exact artwork is saved with your order.' + photo
+      : "Card payment isn't switched on yet, so nothing is charged. Reserve now and this exact artwork is saved with your order." + photo;
   }
   function closeBuy() {
     els.buy.hidden = true;
     if (buyFocus && buyFocus.focus) buyFocus.focus();
   }
-  async function reserve() {
-    if (!buying || !dbCap) throw { code: 'unavailable' };
-    const uid = userCap ? await userCap.id() : null;
-    if (!uid) throw { code: 'signed_out' };
+  // Saves the order first and only then offers payment, so nobody pays for an order the shop never received.
+  async function placeOrder(s, email, status) {
+    if (!buying || !canOrder()) throw { code: 'unavailable' };
+    const order = {
+      ref: buying.ref, kind: buying.kind, size: s.id, sizeLabel: s.label, price: s.price, currency: SHOP.currency, status, email,
+      recipe: recipe(buying), thumb: buying.thumb,
+      // image mode: the same small square the artwork is drawn from, so the print can be remade without asking for the photo
+      source: state.mode === 'image' && srcImg ? jpegUnder(squareCrop(+els.detail.value), 130000) : null,
+      at: Date.now(),
+    };
+    if (SHOP.orderEndpoint) {
+      const r = await fetch(SHOP.orderEndpoint, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(order) });
+      if (!r.ok) throw { code: 'unavailable' };
+      const j = await r.json().catch(() => null);
+      if (j && typeof j.url === 'string' && /^https:\/\//.test(j.url)) order.payUrl = j.url;
+    } else {
+      const uid = userCap ? await userCap.id() : null;
+      if (!uid) throw { code: 'signed_out' };
+      await dbCap.collection(`orders/${uid}/items`).doc(order.ref).set(order);
+    }
     if (buying.tiles) recordChoice(buying.tiles);
-    const size = document.querySelector('input[name="size"]:checked').value;
-    const ref = await dbCap.collection(`orders/${uid}/items`).add({
-      kind: buying.kind, size, status: SHOP.checkoutUrl ? 'checkout' : 'reserved',
-      recipe: recipe(buying), thumb: buying.thumb, at: Date.now(),
-    });
-    return ref.id;
+    return order;
   }
   els.buyGo.addEventListener('click', async () => {
+    const s = pickedSize(), pay = paysNow(s);
+    let email = '';
+    if (!pay) {
+      email = els.buyEmail.value.trim();
+      if (!email || !els.buyEmail.checkValidity()) {
+        els.buyMsg.textContent = 'Add your email first, so the shop can reach you about this order.';
+        els.buyEmail.focus();
+        return;
+      }
+      try { localStorage.setItem(EMAIL_KEY, email); } catch (e) { /* storage blocked */ }
+    }
     els.buyGo.disabled = true;
-    els.buyMsg.textContent = 'Reserving…';
+    els.buyMsg.textContent = 'Saving your order…';
     try {
-      const id = await reserve();
-      els.buyMsg.textContent = `Reserved. Reference ${id.slice(-6).toUpperCase()}. Prints aren't on sale yet; the owner of this page can see your reservation.`;
+      const order = await placeOrder(s, email, pay ? 'awaiting_payment' : 'reserved');
+      showDone(order, true);
+      loadOrders();
     } catch (e) {
       els.buyGo.disabled = false;
       els.buyMsg.textContent =
-        e && e.code === 'signed_out' ? 'Sign in to claude.ai to reserve a print. You can still save the PNG.'
-        : e && e.code === 'invalid_argument' ? 'Your access to this page is view-only, so it can\'t save a reservation. Save the PNG instead.'
-        : e && e.code === 'quota_exceeded' ? 'The print queue is full right now. Save the PNG instead.'
-        : 'That reservation didn\'t go through. Try again, or save the PNG.';
+        e && e.code === 'signed_out' ? 'Sign in to claude.ai to order a print. You can still save the PNG.'
+        : e && e.code === 'invalid_argument' ? "Your access to this page is view-only, so it can't save an order. Save the PNG instead."
+        : e && e.code === 'quota_exceeded' ? 'The order book is full right now. Save the PNG instead.'
+        : "That order didn't go through, and nothing was charged. Try again, or save the PNG.";
     }
   });
-  els.buyLink.addEventListener('click', () => { reserve().catch(() => {}); }); // the link opens either way
-  $('buy-save').addEventListener('click', () => {
+
+  // Confirmation: shown right after ordering (fresh) and again when an order is opened from "Orders".
+  function showDone(order, fresh) {
+    const url = payUrlFor(order);
+    els.buyForm.hidden = true;
+    els.buyDone.hidden = false;
+    els.buyTitle.textContent = fresh ? 'Order saved' : 'Your order';
+    els.doneTitle.textContent = url ? 'One step left: pay' : order.status === 'reserved' ? 'Reserved!' : statusLabel(order.status);
+    els.doneSub.textContent = url ? 'Your artwork is saved. Nothing is charged until you pay.'
+      : order.status === 'reserved' ? 'Nothing has been charged.' : '';
+    els.doneImg.src = order.thumb;
+    els.doneRef.textContent = order.ref;
+    els.doneCopy.textContent = 'Copy';
+    els.doneItem.textContent = `${order.kind === 'wall' ? 'Wall print' : 'Print'}, ${order.sizeLabel || order.size}`;
+    els.doneTotal.textContent = money(order.price, order.currency);
+    els.doneStatus.textContent = statusLabel(order.status);
+    els.doneDate.textContent = order.at ? new Date(order.at).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : '';
+    els.donePay.hidden = !url;
+    if (url) { els.donePay.href = url; els.donePay.textContent = `Pay ${money(order.price, order.currency)}`; }
+    els.doneNext.textContent = url ? 'Payment opens in a new tab and is handled by Stripe, which emails your receipt. Keep the reference in case you need to ask about this order.'
+      : order.status === 'reserved' ? (order.email
+          ? "Card payment isn't switched on yet. Your email is saved with the order so the shop can contact you when this print can be paid for and made."
+          : "Card payment isn't switched on yet. Keep the reference so the shop can find this order.")
+      : '';
+    els.doneNext.hidden = !els.doneNext.textContent;
+    els.doneSave.hidden = !fresh; // only the order just placed is still on the mixing desk to export
+    (url ? els.donePay : $('done-close')).focus();
+  }
+  els.donePay.addEventListener('click', () => {
+    els.doneNext.hidden = false;
+    els.doneNext.textContent = "The payment page opened in a new tab. This page can't see whether the payment went through; Stripe's receipt is your proof.";
+  });
+  els.doneCopy.addEventListener('click', async () => {
+    try { await navigator.clipboard.writeText(els.doneRef.textContent); els.doneCopy.textContent = 'Copied'; }
+    catch (e) { // no clipboard access here: select the reference so it can be copied by hand
+      const r = document.createRange(); r.selectNodeContents(els.doneRef);
+      const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r);
+      els.doneCopy.textContent = 'Selected';
+    }
+  });
+  function saveBought() {
     if (!buying) return;
     if (buying.kind === 'wall') { const c = document.createElement('canvas'); paint(c, buying.cands, buying.k, SIZE); saveCanvas(c, null, 'Saved wall'); }
     else saveCanvas(artworkCanvas(buying.tiles), buying.tiles, 'Saved');
-  });
+  }
+  $('buy-save').addEventListener('click', saveBought);
+  els.doneSave.addEventListener('click', saveBought);
   $('buy-close').addEventListener('click', closeBuy);
+  $('done-close').addEventListener('click', closeBuy);
   els.buy.addEventListener('click', e => { if (e.target === els.buy) closeBuy(); });
+
+  // "Orders": each buyer's own orders, read back from the store (rows are untrusted data, so every field is checked)
+  function cleanOrder(id, v) {
+    if (!v || typeof v !== 'object') return null;
+    const str = (x, d = '') => (typeof x === 'string' ? x.slice(0, 200) : d);
+    return {
+      ref: str(v.ref) || id.slice(-6).toUpperCase(), kind: v.kind === 'wall' ? 'wall' : 'artwork',
+      size: str(v.size), sizeLabel: str(v.sizeLabel), price: typeof v.price === 'number' ? v.price : null,
+      currency: /^[A-Z]{3}$/.test(v.currency) ? v.currency : SHOP.currency, status: str(v.status, 'reserved'), email: str(v.email),
+      thumb: typeof v.thumb === 'string' && v.thumb.startsWith('data:image/jpeg') ? v.thumb : '', at: +v.at || 0,
+    };
+  }
+  async function loadOrders() {
+    if (!dbCap || !userCap) return;
+    try {
+      const uid = await userCap.id();
+      if (!uid) return;
+      const snap = await dbCap.collection(`orders/${uid}/items`).orderBy('at', 'desc').limit(50).get();
+      myOrders = snap.docs.map(d => cleanOrder(d.id, d.data())).filter(Boolean);
+    } catch (e) { return; }
+    els.ordersOpen.hidden = !myOrders.length;
+    els.ordersN.textContent = String(myOrders.length);
+  }
+  function openOrders() {
+    els.ordersList.replaceChildren(...myOrders.map(o => {
+      const li = document.createElement('li'), b = document.createElement('button');
+      b.type = 'button'; b.className = 'order';
+      const im = document.createElement('img'); im.alt = ''; if (o.thumb) im.src = o.thumb;
+      const mid = document.createElement('span'), top = document.createElement('b'), sub = document.createElement('small');
+      top.textContent = `${o.ref} · ${o.sizeLabel || o.size}`;
+      sub.textContent = [typeof o.price === 'number' ? money(o.price, o.currency) : '', o.at ? new Date(o.at).toLocaleDateString() : ''].filter(Boolean).join(' · ');
+      mid.append(top, sub);
+      const chip = document.createElement('span');
+      chip.className = 'chip' + (PAYABLE.has(o.status) || o.status === 'cancelled' ? '' : ' good');
+      chip.textContent = statusLabel(o.status);
+      b.append(im, mid, chip);
+      b.addEventListener('click', () => { els.orders.hidden = true; buyFocus = els.ordersOpen; els.buy.hidden = false; showDone(o, false); });
+      li.appendChild(b);
+      return li;
+    }));
+    els.orders.hidden = false;
+    $('orders-close').focus();
+  }
+  function closeOrders() { els.orders.hidden = true; els.ordersOpen.focus(); }
+  els.ordersOpen.addEventListener('click', openOrders);
+  $('orders-close').addEventListener('click', closeOrders);
+  els.orders.addEventListener('click', e => { if (e.target === els.orders) closeOrders(); });
+
   if (window.claude && typeof window.claude.use === 'function') {
-    window.claude.use('db').then(d => { dbCap = d; }, () => {});
-    window.claude.use('user').then(u => { userCap = u; }, () => {});
+    const use = n => window.claude.use(n).catch(() => null);
+    Promise.all([use('db'), use('user')]).then(([d, u]) => { dbCap = d; userCap = u; syncCheckout(); loadOrders(); });
   }
   function syncBuyLabel() { els.buyMain.textContent = state.wall > 1 ? 'Buy wall' : 'Buy now'; }
 
@@ -1290,6 +1572,7 @@ small { color: var(--muted); font-size: 13px; }
     if (e.metaKey || e.ctrlKey || e.altKey) return;
     if (!els.modal.hidden) { if (e.key === 'Escape') closeModal(); return; }
     if (!els.buy.hidden) { if (e.key === 'Escape') closeBuy(); return; }
+    if (!els.orders.hidden) { if (e.key === 'Escape') closeOrders(); return; }
     if (!els.zoom.hidden) {
       if (e.key === 'Escape') closeZoom();
       else if (e.key === 'ArrowLeft') stepZoom(-1);
