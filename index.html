@@ -662,9 +662,11 @@ small { color: var(--muted); font-size: 13px; }
       { id: '50x50cm', label: '50×50 cm', price: 75, payLink: '' },
       { id: '70x70cm', label: '70×70 cm', price: 120, payLink: '' },
     ],
-    // For a self-hosted copy with its own server: the page POSTs each order here as JSON and, if the reply is
-    // {"url": "https://..."} (for example a Stripe Checkout Session made with the secret key), sends the buyer there to pay.
-    orderEndpoint: '',
+    // The order server (worker/index.js on Cloudflare). On load the page asks `${api}/shop`; if a server answers with
+    // card payment on, its sizes and prices replace the ones above and Buy goes to Stripe Checkout. Where nothing answers
+    // (GitHub Pages, claude.ai, a plain file) the page falls back to Payment Links or reservations. '' turns this off.
+    // Use a full address (https://shop.example.com/api) if the page and the Worker live on different sites.
+    api: '/api',
   };
   const SIZE = 1800;
   const BIG_FONT = 'Anton, Impact, "Arial Narrow Bold", sans-serif';
@@ -1294,7 +1296,7 @@ small { color: var(--muted); font-size: 13px; }
   const EMAIL_KEY = 'popart-mixer-email';
   const STATUS = {
     reserved: 'Reserved, not paid', awaiting_payment: 'Waiting for payment', checkout: 'Waiting for payment',
-    paid: 'Paid', printing: 'Being printed', shipped: 'Shipped', cancelled: 'Cancelled',
+    paid: 'Paid', printing: 'Being printed', shipped: 'Shipped', cancelled: 'Cancelled', refunded: 'Refunded',
   };
   const PAYABLE = new Set(['reserved', 'awaiting_payment', 'checkout']);
   const statusLabel = s => STATUS[s] || 'In progress';
@@ -1307,10 +1309,15 @@ small { color: var(--muted); font-size: 13px; }
   // Short order reference without look-alike characters (no 0/O, 1/I/L). It also goes to Stripe as client_reference_id.
   const REF_ABC = '23456789ABCDEFGHJKMNPQRSTUVWXYZ';
   const newRef = () => 'PM-' + Array.from(crypto.getRandomValues(new Uint8Array(6)), b => REF_ABC[b % REF_ABC.length]).join('');
-  const canOrder = () => !!(SHOP.orderEndpoint || dbCap);
+  // shopLive: an order server answered with card payment on. Its orders are listed from this browser (LOCAL_KEY).
+  let shopLive = false;
+  const LOCAL_KEY = 'popart-mixer-orders';
+  const canOrder = () => !!(shopLive || dbCap);
   const sizeOf = id => SHOP.sizes.find(s => s.id === id);
   const pickedSize = () => { const r = document.querySelector('input[name="size"]:checked'); return sizeOf(r && r.value) || SHOP.sizes[0]; };
-  const paysNow = s => !!(s.payLink || SHOP.orderEndpoint);
+  const paysNow = s => !!(shopLive || s.payLink);
+  // payment addresses must be https (http only for local testing)
+  const payable = u => typeof u === 'string' && /^(https:\/\/|http:\/\/(localhost|127\.0\.0\.1)[:/])/.test(u);
   function payUrlFor(order) {
     if (!PAYABLE.has(order.status)) return '';
     if (order.payUrl) return order.payUrl;
@@ -1343,9 +1350,17 @@ small { color: var(--muted); font-size: 13px; }
     };
   }
 
-  els.buySizes.innerHTML = SHOP.sizes.map((s, i) =>
-    `<input type="radio" name="size" id="sz${i}" value="${s.id}"${i === Math.min(1, SHOP.sizes.length - 1) ? ' checked' : ''}>` +
-    `<label for="sz${i}">${s.label}<span>${money(s.price)}</span></label>`).join('');
+  function renderSizes() {
+    const was = document.querySelector('input[name="size"]:checked');
+    const keep = was && sizeOf(was.value) ? was.value : (SHOP.sizes[Math.min(1, SHOP.sizes.length - 1)] || {}).id;
+    els.buySizes.replaceChildren(...SHOP.sizes.flatMap((s, i) => {
+      const r = document.createElement('input'), l = document.createElement('label'), p = document.createElement('span');
+      r.type = 'radio'; r.name = 'size'; r.id = 'sz' + i; r.value = s.id; r.checked = s.id === keep;
+      l.htmlFor = r.id; p.textContent = money(s.price); l.append(s.label, p);
+      return [r, l];
+    }));
+  }
+  renderSizes();
   els.buySizes.addEventListener('change', syncCheckout);
   try { els.buyEmail.value = localStorage.getItem(EMAIL_KEY) || ''; } catch (e) { /* storage blocked */ }
   els.buyEmail.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); els.buyGo.click(); } });
@@ -1382,7 +1397,9 @@ small { color: var(--muted); font-size: 13px; }
     els.buyGo.textContent = pay ? 'Continue to payment' : 'Reserve this print';
     els.buyEmailField.hidden = !ok || pay; // Stripe asks for the email itself
     const photo = state.mode === 'image' && srcImg ? ' Your photo is saved with it for printing.' : '';
+    const ship = shopLive && SHOP.shipping ? (SHOP.shipping.price ? ` Plus ${money(SHOP.shipping.price)} ${SHOP.shipping.label.toLowerCase()}.` : ` ${SHOP.shipping.label}: free.`) : '';
     els.buyMsg.textContent = !ok ? "This copy of the page can't take orders yet. Save the PNG for now."
+      : shopLive ? 'Next: secure card payment with Stripe, then you come straight back here. This exact artwork is saved with your order.' + ship + photo
       : pay ? 'Next: card payment with Stripe, in a new tab. This exact artwork is saved with your order.' + photo
       : "Card payment isn't switched on yet, so nothing is charged. Reserve now and this exact artwork is saved with your order." + photo;
   }
@@ -1400,11 +1417,15 @@ small { color: var(--muted); font-size: 13px; }
       source: state.mode === 'image' && srcImg ? jpegUnder(squareCrop(+els.detail.value), 130000) : null,
       at: Date.now(),
     };
-    if (SHOP.orderEndpoint) {
-      const r = await fetch(SHOP.orderEndpoint, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(order) });
-      if (!r.ok) throw { code: 'unavailable' };
+    if (shopLive) {
+      // the server issues the reference and the price; it ignores any price sent from here
+      const r = await fetch(SHOP.api + '/order', { method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ kind: order.kind, size: order.size, recipe: order.recipe, thumb: order.thumb, source: order.source }) });
       const j = await r.json().catch(() => null);
-      if (j && typeof j.url === 'string' && /^https:\/\//.test(j.url)) order.payUrl = j.url;
+      if (!r.ok || !j || !/^PM-[A-Z0-9]{6}$/.test(j.ref)) throw { code: 'unavailable' };
+      Object.assign(order, { ref: j.ref, key: j.key, price: j.price, currency: j.currency, sizeLabel: j.sizeLabel, status: j.status, at: j.at });
+      if (payable(j.url)) order.payUrl = j.url;
+      rememberOrder(order);
     } else {
       const uid = userCap ? await userCap.id() : null;
       if (!uid) throw { code: 'signed_out' };
@@ -1431,6 +1452,11 @@ small { color: var(--muted); font-size: 13px; }
     els.buyMsg.textContent = 'Saving your order…';
     try {
       const order = await placeOrder(s, email, pay ? 'awaiting_payment' : 'reserved');
+      if (shopLive && order.payUrl) { // straight on to Stripe; the page shows the confirmation when the buyer comes back
+        els.buyMsg.textContent = 'Opening secure payment…';
+        location.assign(order.payUrl);
+        return;
+      }
       showDone(order, true);
       loadOrders();
     } catch (e) {
@@ -1444,14 +1470,18 @@ small { color: var(--muted); font-size: 13px; }
   });
 
   // Confirmation: shown right after ordering (fresh) and again when an order is opened from "Orders".
-  function showDone(order, fresh) {
-    const url = payUrlFor(order);
+  function showDone(order, fresh, checkServer = true) {
+    const url = payUrlFor(order), server = !!order.key;
     els.buyForm.hidden = true;
     els.buyDone.hidden = false;
     els.buyTitle.textContent = fresh ? 'Order saved' : 'Your order';
-    els.doneTitle.textContent = url ? 'One step left: pay' : order.status === 'reserved' ? 'Reserved!' : statusLabel(order.status);
+    els.doneTitle.textContent = url ? 'One step left: pay' : order.status === 'reserved' ? 'Reserved!'
+      : order.status === 'paid' ? 'Paid. Thank you!' : statusLabel(order.status);
     els.doneSub.textContent = url ? 'Your artwork is saved. Nothing is charged until you pay.'
-      : order.status === 'reserved' ? 'Nothing has been charged.' : '';
+      : order.status === 'reserved' ? 'Nothing has been charged.'
+      : order.status === 'paid' ? 'Your print is in the queue. Stripe has emailed your receipt.'
+      : order.status === 'shipped' && order.tracking ? 'Tracking: ' + order.tracking : '';
+    els.donePay.target = server ? '_self' : '_blank';
     els.doneImg.src = order.thumb;
     els.doneRef.textContent = order.ref;
     els.doneCopy.textContent = 'Copy';
@@ -1461,7 +1491,9 @@ small { color: var(--muted); font-size: 13px; }
     els.doneDate.textContent = order.at ? new Date(order.at).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : '';
     els.donePay.hidden = !url;
     if (url) { els.donePay.href = url; els.donePay.textContent = `Pay ${money(order.price, order.currency)}`; }
-    els.doneNext.textContent = url ? 'Payment opens in a new tab and is handled by Stripe, which emails your receipt. Keep the reference in case you need to ask about this order.'
+    els.doneNext.textContent = url && server ? 'Payment is handled by Stripe, which emails your receipt. You come back here afterwards.'
+      : url ? 'Payment opens in a new tab and is handled by Stripe, which emails your receipt. Keep the reference in case you need to ask about this order.'
+      : server && order.status === 'paid' ? 'Keep the reference in case you need to ask about this order. It is also listed under Orders on this device.'
       : order.status === 'reserved' ? (order.email
           ? "Card payment isn't switched on yet. Your email is saved with the order so the shop can contact you when this print can be paid for and made."
           : "Card payment isn't switched on yet. Keep the reference so the shop can find this order.")
@@ -1469,8 +1501,38 @@ small { color: var(--muted); font-size: 13px; }
     els.doneNext.hidden = !els.doneNext.textContent;
     els.doneSave.hidden = !fresh; // only the order just placed is still on the mixing desk to export
     (url ? els.donePay : $('done-close')).focus();
+    shown = order;
+    if (server && checkServer) refreshOrder(order).then(changed => { if (changed && shown === order && !els.buy.hidden) showDone(order, fresh, false); });
+  }
+  let shown = null;
+  // Ask the order server for the latest status (it checks Stripe directly) and a working payment link.
+  async function refreshOrder(order) {
+    try {
+      const r = await fetch(`${SHOP.api}/order/${order.ref}`, { headers: { 'x-order-key': order.key }, cache: 'no-store' });
+      if (!r.ok) return false;
+      const j = await r.json();
+      const before = order.status + '|' + (order.payUrl || '');
+      order.status = typeof j.status === 'string' ? j.status : order.status;
+      order.payUrl = payable(j.url) ? j.url : '';
+      order.tracking = typeof j.tracking === 'string' ? j.tracking : '';
+      rememberOrder(order);
+      return before !== order.status + '|' + order.payUrl;
+    } catch (e) { return false; }
+  }
+  function localOrders() {
+    try { const v = JSON.parse(localStorage.getItem(LOCAL_KEY) || '[]'); return Array.isArray(v) ? v : []; } catch (e) { return []; }
+  }
+  // Server orders are remembered in this browser (reference, key, thumbnail) so Orders can list them and check status.
+  function rememberOrder(o) {
+    const keep = { ref: o.ref, key: o.key, kind: o.kind, size: o.size, sizeLabel: o.sizeLabel, price: o.price, currency: o.currency,
+      status: o.status, at: o.at, thumb: o.thumb, payUrl: o.payUrl || '', tracking: o.tracking || '' };
+    const list = [keep, ...localOrders().filter(x => x && x.ref !== o.ref)].slice(0, 20);
+    for (let n = list.length; n > 0; n--) { // thumbnails are big: drop the oldest orders if storage is full
+      try { localStorage.setItem(LOCAL_KEY, JSON.stringify(list.slice(0, n))); return; } catch (e) { /* full or blocked */ }
+    }
   }
   els.donePay.addEventListener('click', () => {
+    if (els.donePay.target === '_self') return;
     els.doneNext.hidden = false;
     els.doneNext.textContent = "The payment page opened in a new tab. This page can't see whether the payment went through; Stripe's receipt is your proof.";
   });
@@ -1502,11 +1564,14 @@ small { color: var(--muted); font-size: 13px; }
       size: str(v.size), sizeLabel: str(v.sizeLabel), price: typeof v.price === 'number' ? v.price : null,
       currency: /^[A-Z]{3}$/.test(v.currency) ? v.currency : SHOP.currency, status: str(v.status, 'reserved'), email: str(v.email),
       thumb: typeof v.thumb === 'string' && v.thumb.startsWith('data:image/jpeg') ? v.thumb : '', at: +v.at || 0,
+      key: str(v.key), payUrl: payable(v.payUrl) ? v.payUrl : '', tracking: str(v.tracking),
     };
   }
   async function loadOrders() {
-    if (!dbCap || !userCap) return;
-    try {
+    if (shopLive) {
+      myOrders = localOrders().map(v => cleanOrder(String(v && v.ref || ''), v)).filter(o => o && o.key);
+    } else if (!dbCap || !userCap) return;
+    else try {
       const uid = await userCap.id();
       if (!uid) return;
       const snap = await dbCap.collection(`orders/${uid}/items`).orderBy('at', 'desc').limit(50).get();
@@ -1544,6 +1609,39 @@ small { color: var(--muted); font-size: 13px; }
     const use = n => window.claude.use(n).catch(() => null);
     Promise.all([use('db'), use('user')]).then(([d, u]) => { dbCap = d; userCap = u; syncCheckout(); loadOrders(); });
   }
+  // Is an order server here? Its prices win over the ones in SHOP, because they are what Stripe will charge.
+  async function probeShop() {
+    if (!SHOP.api || !/^https?:$/.test(location.protocol)) return;
+    try {
+      const r = await fetch(SHOP.api + '/shop', { cache: 'no-store' });
+      if (!r.ok || !/json/.test(r.headers.get('content-type') || '')) return;
+      const j = await r.json();
+      const sizes = Array.isArray(j.sizes) ? j.sizes.filter(s => s && typeof s.id === 'string' && typeof s.label === 'string' && typeof s.price === 'number') : [];
+      if (!j.live || !sizes.length) return;
+      shopLive = true;
+      SHOP.sizes = sizes.map(s => ({ id: s.id.slice(0, 40), label: s.label.slice(0, 40), price: s.price, payLink: '' }));
+      if (/^[A-Z]{3}$/.test(j.currency)) SHOP.currency = j.currency;
+      if (j.shipping && typeof j.shipping.label === 'string') SHOP.shipping = { label: j.shipping.label.slice(0, 60), price: +j.shipping.price || 0 };
+      renderSizes();
+      syncCheckout();
+      await loadOrders();
+      returnFromStripe();
+    } catch (e) { /* no order server: keep the fallbacks */ }
+  }
+  // Stripe sends the buyer back to ?order=PM-XXXXXX&paid=1 (or &cancelled=1): show that order's confirmation.
+  async function returnFromStripe() {
+    const q = new URLSearchParams(location.search), ref = q.get('order');
+    if (!ref) return;
+    history.replaceState(null, '', location.pathname + location.hash);
+    const o = myOrders.find(x => x.ref === ref);
+    if (!o) return;
+    await refreshOrder(o); // status straight from Stripe, so a paid order never flashes "One step left: pay"
+    buyFocus = document.activeElement;
+    els.buy.hidden = false;
+    showDone(o, false, false);
+    loadOrders();
+  }
+  probeShop();
   function syncBuyLabel() { els.buyMain.textContent = state.wall > 1 ? 'Buy wall' : 'Buy now'; }
 
   // ---------- taste UI + shared store ----------

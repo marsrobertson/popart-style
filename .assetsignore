@@ -1,0 +1,14 @@
+# Files the Worker must not serve to the public
+.git
+.github
+.wrangler
+node_modules
+worker
+test
+wrangler.jsonc
+package.json
+package-lock.json
+README.md
+.assetsignore
+.gitignore
+.dev.vars

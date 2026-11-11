@@ -1,0 +1,17 @@
+// Cloudflare Worker: serves the page from this folder and runs the order server in worker/index.js.
+// Setup steps are in README.md, "Selling with Cloudflare and Stripe".
+{
+  "name": "popart-mixer",
+  "main": "worker/index.js",
+  "compatibility_date": "2025-09-01",
+  "assets": { "directory": ".", "binding": "ASSETS" },
+  "kv_namespaces": [
+    // Replace with the id printed by: npx wrangler kv namespace create ORDERS
+    { "binding": "ORDERS", "id": "REPLACE_WITH_KV_NAMESPACE_ID" }
+  ],
+  "vars": {
+    // Where buyers return after paying. Leave empty to use this Worker's own address.
+    "SITE_URL": ""
+  },
+  "observability": { "enabled": true }
+}
