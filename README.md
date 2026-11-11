@@ -34,7 +34,7 @@ Saved images also appear in "Your picks" under the grid for the current tab only
 
 ## Shop
 
-Buy opens a checkout: pick a size, see the price, place the order. The order is saved first; payment is only offered after that, so nobody pays for an order the shop never received. A confirmation then shows the reference (like `PM-7K3F2Q`), size, total and status, and the buyer can reopen it from **Orders** in the header.
+Buy opens a checkout: pick a size, see the price and a to-scale room view (the print above a 160 cm sideboard), place the order. The order is saved first; payment is only offered after that, so nobody pays for an order the shop never received. A confirmation then shows the reference (like `PM-7K3F2Q`), size, total and status, and the buyer can reopen it from **Orders** in the header.
 
 Settings live in `SHOP` near the top of the script in `index.html`:
 
@@ -52,7 +52,7 @@ Settings live in `SHOP` near the top of the script in `index.html`:
 
 **Where orders are stored**
 
-- As a claude.ai artifact: `orders/<viewer id>/items/<reference>` in the artifact's database. Only the artifact owner and editors can read all orders; each buyer reads and writes only their own. Because buyers can write their own order, never treat its `status` field as proof of payment. Stripe is the record of who paid.
+- As a claude.ai artifact: `orders/<viewer id>/items/<reference>` in the artifact's database. Each buyer also gets a marker document at `orders/<viewer id>`, so the owner can list the `orders` collection to find buyers, then read each buyer's `items`. Only the artifact owner and editors can read all orders; each buyer reads and writes only their own. Because buyers can write their own order, never treat its `status` field as proof of payment. Stripe is the record of who paid.
 - On claude.ai, people outside your organisation can open a shared artifact but cannot write to its database, so they cannot order. Selling to the public needs the self-hosted route (`orderEndpoint`).
 - Opened as a plain file with no `orderEndpoint`, Buy only offers the PNG.
 

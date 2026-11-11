@@ -245,7 +245,9 @@ small { color: var(--muted); font-size: 13px; }
 .orders-btn b { font-weight: 400; background: var(--ink); color: var(--pop); padding: 0 7px; }
 .co { display: grid; grid-template-columns: minmax(0, 260px) minmax(0, 1fr); gap: 16px; align-items: start; }
 .co-side { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
-@media (max-width: 620px) { .co { grid-template-columns: minmax(0, 1fr); } .co > img { width: min(100%, 220px); justify-self: center; } }
+.co-art { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.room { display: block; width: 100%; height: auto; border: 3px solid var(--ink); }
+@media (max-width: 620px) { .co { grid-template-columns: minmax(0, 1fr); } .co-art { width: min(100%, 240px); justify-self: center; } }
 .seg.sizes label { display: flex; flex-direction: column; gap: 2px; padding: 8px 4px; }
 .seg.sizes label span { font: 800 14px var(--body); letter-spacing: 0; text-transform: none; }
 .total {
@@ -444,7 +446,19 @@ small { color: var(--muted); font-size: 13px; }
     </div>
 
     <div class="co" id="buy-form">
-      <img id="buy-img" alt="The artwork you are buying">
+      <div class="co-art">
+        <img id="buy-img" alt="The artwork you are buying">
+        <svg class="room" id="room" viewBox="0 0 200 170" role="img" aria-labelledby="room-cap">
+          <rect width="200" height="162" fill="#F1ECE6"/><rect y="162" width="200" height="8" fill="#CFC4B8"/>
+          <rect x="20" y="107" width="160" height="55" fill="#FFFFFF" stroke="#121212" stroke-width="1.6"/>
+          <path d="M73.3 107v55M126.6 107v55" stroke="#121212" stroke-width="1.2"/>
+          <rect x="40" y="89" width="9" height="18" fill="#121212"/><circle cx="44.5" cy="80" r="9" fill="#E8007D"/>
+          <rect id="room-shadow" fill="#121212" opacity="0.28"/>
+          <image id="room-art" preserveAspectRatio="none"/>
+          <rect id="room-frame" fill="none" stroke="#121212" stroke-width="1.4"/>
+        </svg>
+        <small id="room-cap"></small>
+      </div>
       <div class="co-side">
         <span class="label">Print size</span>
         <div class="seg sizes" id="buy-sizes" role="radiogroup" aria-label="Print size"></div>
@@ -1355,6 +1369,14 @@ small { color: var(--muted); font-size: 13px; }
     if (!buying || els.buyForm.hidden) return;
     const s = pickedSize(), ok = canOrder(), pay = paysNow(s);
     els.buyTotal.textContent = money(s.price);
+    // room view, drawn in centimetres: the print hangs 18 cm above a 160 cm sideboard
+    const cm = parseFloat(s.id) || 50, x = 100 - cm / 2, y = 89 - cm;
+    [['room-shadow', 1.5], ['room-art', 0], ['room-frame', 0]].forEach(([id, d]) => {
+      const el = $(id);
+      el.setAttribute('x', x + d); el.setAttribute('y', y + d); el.setAttribute('width', cm); el.setAttribute('height', cm);
+    });
+    $('room-art').setAttribute('href', buying.thumb);
+    $('room-cap').textContent = `To scale: ${s.label} above a 160 cm wide sideboard.`;
     els.buyGo.hidden = !ok;
     els.buyGo.disabled = false;
     els.buyGo.textContent = pay ? 'Continue to payment' : 'Reserve this print';
@@ -1387,6 +1409,8 @@ small { color: var(--muted); font-size: 13px; }
       const uid = userCap ? await userCap.id() : null;
       if (!uid) throw { code: 'signed_out' };
       await dbCap.collection(`orders/${uid}/items`).doc(order.ref).set(order);
+      // a marker per buyer, so the shop can list who has ordered and then read each buyer's orders
+      dbCap.doc(`orders/${uid}`).set({ last: order.ref, at: order.at }).catch(() => {});
     }
     if (buying.tiles) recordChoice(buying.tiles);
     return order;
