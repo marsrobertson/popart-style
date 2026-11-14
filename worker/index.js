@@ -41,7 +41,7 @@ export default {
 async function route(request, env, url) {
   const p = url.pathname, m = request.method;
   let r;
-  if (p === '/api/shop' && m === 'GET') return shopInfo(env);
+  if (p === '/api/shop' && m === 'GET') return shopInfo(request, env, url);
   if (p === '/api/order' && m === 'POST') return createOrder(request, env, url);
   if ((r = p.match(/^\/api\/order\/(PM-[A-Z0-9]{6})$/)) && m === 'GET') return orderStatus(request, env, url, r[1]);
   if ((r = p.match(/^\/api\/thumb\/(PM-[A-Z0-9]{6})\.jpg$/)) && m === 'GET') return thumb(env, r[1]);
@@ -58,10 +58,14 @@ async function route(request, env, url) {
 }
 
 // ---------- shop ----------
-function shopInfo(env) {
+function shopInfo(request, env, url) {
+  const country = (request.cf && request.cf.country) || request.headers.get('cf-ipcountry') || '';
+  const guess = SHOP.countryCurrency[country] || SHOP.defaultCurrency;
+  const sizes = url.searchParams.has('test') ? [...SHOP.sizes, SHOP.testSize] : SHOP.sizes;
   return json({
-    currency: SHOP.currency,
-    sizes: SHOP.sizes.map(({ id, label, price }) => ({ id, label, price })),
+    currencies: SHOP.currencies,
+    currency: SHOP.currencies.includes(guess) ? guess : SHOP.defaultCurrency,
+    sizes: sizes.map(({ id, label, prices }) => ({ id, label, prices })),
     shipping: SHOP.shipping,
     live: !!env.STRIPE_SECRET_KEY,
     test: /^(sk|rk)_test_/.test(env.STRIPE_SECRET_KEY || ''),
@@ -72,8 +76,11 @@ function shopInfo(env) {
 async function createOrder(request, env, url) {
   if (!env.STRIPE_SECRET_KEY) return json({ error: 'payments_off' }, 503);
   const body = await readJson(request);
-  const size = SHOP.sizes.find(s => s.id === body.size);
+  const size = [...SHOP.sizes, SHOP.testSize].find(s => s.id === body.size);
   if (!size) return json({ error: 'bad_size' }, 400);
+  const currency = SHOP.currencies.includes(body.currency) ? body.currency : SHOP.defaultCurrency;
+  const price = size.prices[currency];
+  if (typeof price !== 'number') return json({ error: 'bad_currency' }, 400);
   const kind = body.kind === 'wall' ? 'wall' : 'artwork';
   if (!isJpeg(body.thumb, 100000)) return json({ error: 'bad_thumb' }, 400);
   if (body.source != null && !isJpeg(body.source, 200000)) return json({ error: 'bad_source' }, 400);
@@ -88,8 +95,8 @@ async function createOrder(request, env, url) {
   if (!ref) return json({ error: 'server_error' }, 500);
   const key = randomKey();
   const order = {
-    ref, kind, size: size.id, sizeLabel: size.label, price: size.price, currency: SHOP.currency,
-    shipping: SHOP.shipping.price || 0, status: 'awaiting_payment', keyHash: await sha256(key),
+    ref, kind, size: size.id, sizeLabel: size.label, price, currency, test: !!size.test,
+    shipping: SHOP.shipping.prices[currency] || 0, status: 'awaiting_payment', keyHash: await sha256(key),
     recipe, at: Date.now(), sessionId: null, email: null, shippingAddress: null, paidAt: null, amountPaid: null,
   };
   const ttl = { expirationTtl: SHOP.unpaidDays * 86400 };
@@ -131,16 +138,18 @@ async function thumb(env, ref) {
 function newSession(env, url, order) {
   const site = (env.SITE_URL || url.origin).replace(/\/+$/, '');
   const back = `${site}/?order=${order.ref}`;
-  const product = { name: `${SHOP.productName}, ${order.sizeLabel}`, description: `${order.kind === 'wall' ? 'Wall print' : 'Print'} · order ${order.ref}` };
+  const product = order.test
+    ? { name: 'Test order (not printed)', description: `Checks the payment flow · order ${order.ref}` }
+    : { name: `${SHOP.productName}, ${order.sizeLabel}`, description: `${order.kind === 'wall' ? 'Wall print' : 'Print'} · order ${order.ref}` };
   if (url.protocol === 'https:') product.images = [`${url.origin}/api/thumb/${order.ref}.jpg`];
   const params = {
     mode: 'payment',
     client_reference_id: order.ref,
-    metadata: { ref: order.ref, size: order.size, kind: order.kind },
+    metadata: { ref: order.ref, size: order.size, kind: order.kind, test: order.test ? 'yes' : 'no' },
     payment_intent_data: { metadata: { ref: order.ref } },
     line_items: [{ quantity: 1, price_data: { currency: order.currency.toLowerCase(), unit_amount: minor(order.price), product_data: product } }],
     shipping_address_collection: { allowed_countries: SHOP.countries },
-    shipping_options: [{ shipping_rate_data: { type: 'fixed_amount', display_name: SHOP.shipping.label, fixed_amount: { amount: minor(SHOP.shipping.price || 0), currency: order.currency.toLowerCase() } } }],
+    shipping_options: [{ shipping_rate_data: { type: 'fixed_amount', display_name: SHOP.shipping.label, fixed_amount: { amount: minor(order.shipping || 0), currency: order.currency.toLowerCase() } } }],
     success_url: back + '&paid=1',
     cancel_url: back + '&cancelled=1',
   };
@@ -238,13 +247,13 @@ async function adminUpdate(request, env, ref) {
 // ---------- storage ----------
 async function loadOrder(env, ref) { return REF_RE.test(ref) ? env.ORDERS.get('order:' + ref, 'json') : null; }
 function saveOrder(env, order) {
-  const opts = { metadata: { status: order.status, size: order.size, price: order.price, at: order.at, email: order.email } };
+  const opts = { metadata: { status: order.status, size: order.size, price: order.price, currency: order.currency, test: !!order.test, at: order.at, email: order.email } };
   if (order.status === 'awaiting_payment') opts.expirationTtl = SHOP.unpaidDays * 86400;
   return env.ORDERS.put('order:' + order.ref, JSON.stringify(order), opts);
 }
 // what the buyer's page may see (no address, no key hash)
 function publicOrder(o) {
-  return { ref: o.ref, kind: o.kind, size: o.size, sizeLabel: o.sizeLabel, price: o.price, currency: o.currency, shipping: o.shipping, status: o.status, at: o.at, paidAt: o.paidAt, tracking: o.tracking || null };
+  return { ref: o.ref, kind: o.kind, size: o.size, sizeLabel: o.sizeLabel, test: !!o.test, price: o.price, currency: o.currency, shipping: o.shipping, status: o.status, at: o.at, paidAt: o.paidAt, tracking: o.tracking || null };
 }
 
 // ---------- helpers ----------

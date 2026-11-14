@@ -36,7 +36,15 @@ let ok = 0; const t = async (name, fn) => { await fn(); ok++; console.log('ok -'
 
 await t('shop info', async () => {
   const j = await (await call('/api/shop')).json();
-  assert.equal(j.live, true); assert.equal(j.test, true); assert.equal(j.sizes.length, 3); assert.equal(j.currency, 'GBP');
+  assert.equal(j.live, true); assert.equal(j.test, true); assert.equal(j.sizes.length, 3); assert.equal(j.currency, 'EUR');
+  assert.deepEqual(j.currencies, ['EUR', 'GBP', 'USD']); assert.equal(j.sizes[1].prices.GBP, 75);
+});
+await t('currency guessed from country; test product only with ?test', async () => {
+  assert.equal((await (await call('/api/shop', { headers: { 'cf-ipcountry': 'GB' } })).json()).currency, 'GBP');
+  assert.equal((await (await call('/api/shop', { headers: { 'cf-ipcountry': 'US' } })).json()).currency, 'USD');
+  assert.equal((await (await call('/api/shop', { headers: { 'cf-ipcountry': 'PL' } })).json()).currency, 'EUR');
+  const j = await (await call('/api/shop?test=1')).json();
+  assert.equal(j.sizes.at(-1).id, 'test'); assert.equal(j.sizes.at(-1).prices.EUR, 1);
 });
 await t('rejects bad orders', async () => {
   assert.equal((await post('/api/order', { size: 'huge', thumb })).status, 400);
@@ -46,7 +54,7 @@ await t('rejects bad orders', async () => {
 });
 let order;
 await t('creates order + checkout session with server price', async () => {
-  const r = await post('/api/order', { size: '50x50cm', kind: 'artwork', thumb, price: 1, recipe: { mode: 'text' } });
+  const r = await post('/api/order', { size: '50x50cm', kind: 'artwork', currency: 'GBP', thumb, price: 1, recipe: { mode: 'text' } });
   assert.equal(r.status, 200);
   order = await r.json();
   assert.match(order.ref, /^PM-[2-9A-HJKMNP-Z]{6}$/);
@@ -62,6 +70,17 @@ await t('creates order + checkout session with server price', async () => {
   assert.ok(!JSON.stringify(await ORDERS.get('order:' + order.ref, 'json')).includes(order.key), 'key stored only as a hash');
   assert.equal(kv.get('order:' + order.ref).ttl, 7 * 86400);
 });
+await t('test order: 1 EUR, marked test', async () => {
+  const r = await (await post('/api/order', { size: 'test', currency: 'EUR', thumb })).json();
+  assert.equal(r.price, 1); assert.equal(r.currency, 'EUR'); assert.equal(r.test, true);
+  const p = [...sessions.values()].at(-1).params;
+  assert.equal(p.get('line_items[0][price_data][unit_amount]'), '100'); assert.equal(p.get('line_items[0][price_data][currency]'), 'eur');
+  assert.equal(p.get('metadata[test]'), 'yes');
+  const u = await (await post('/api/order', { size: '30x30cm', currency: 'USD', thumb })).json();
+  assert.equal(u.price, 59);
+  const x = await (await post('/api/order', { size: '30x30cm', currency: 'JPY', thumb })).json();
+  assert.equal(x.currency, 'EUR'); assert.equal(x.price, 55); // unknown currency falls back to the default
+});
 await t('thumbnail is served as JPEG', async () => {
   const r = await call(`/api/thumb/${order.ref}.jpg`);
   assert.equal(r.headers.get('content-type'), 'image/jpeg'); assert.equal(Buffer.from(await r.arrayBuffer()).toString(), 'fakejpeg');
@@ -75,7 +94,7 @@ await t('status needs the order key', async () => {
 await t('expired session gets a fresh payment link', async () => {
   sessions.get('cs_test_1').status = 'expired';
   const j = await (await call('/api/order/' + order.ref, { headers: { 'x-order-key': order.key } })).json();
-  assert.ok(j.url.endsWith('cs_test_2'));
+  assert.ok(j.url.startsWith('https://checkout.stripe.com/') && j.url !== order.url);
 });
 
 const sign = async (body, secret = 'whsec_test', ts = Math.floor(Date.now() / 1000)) => {

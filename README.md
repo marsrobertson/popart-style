@@ -40,7 +40,7 @@ Settings live in `SHOP` near the top of the script in `index.html`:
 
 | Setting | What it does |
 |---|---|
-| `currency`, `sizes[].price` | **Placeholders** (GBP 45 / 75 / 120). Set your own. |
+| `currencies`, `sizes[].prices` | Prices per currency (EUR, GBP, USD). **Placeholders**; with the order server, `worker/shop.js` sets the real ones. |
 | `sizes[].payLink` | A [Stripe Payment Link](https://docs.stripe.com/payment-links) per size. Empty = Buy **reserves** the print, asks for an email and charges nothing. |
 | `api` | Where the order server lives (default `/api`, the same site). If a server answers there with card payment on, its sizes and prices replace the ones in `SHOP` and Buy goes to Stripe Checkout. See **Selling with Cloudflare and Stripe** below. |
 
@@ -87,7 +87,7 @@ npx wrangler login
 npx wrangler kv namespace create ORDERS
 ```
 
-Paste the `id` it prints into `wrangler.jsonc` (replacing `REPLACE_WITH_KV_NAMESPACE_ID`). Then set prices in `worker/shop.js` and add the secrets. Each command asks you to paste the value, so it never lands in a file or your shell history. Start with Stripe's **test** key (`sk_test_...`):
+Paste the `id` it prints into `wrangler.jsonc` (replacing `REPLACE_WITH_KV_NAMESPACE_ID`). Then set prices in `worker/shop.js` and add the secrets. Each command asks you to paste the value, so it never lands in a file or your shell history. Use your Stripe secret key (`sk_live_...`, or a test key `sk_test_...` if you prefer Stripe's test mode):
 
 ```bash
 npx wrangler secret put STRIPE_SECRET_KEY
@@ -109,7 +109,9 @@ It prints the address, like `https://popart-mixer.<you>.workers.dev`. Then in th
 npx wrangler secret put STRIPE_WEBHOOK_SECRET
 ```
 
-Test with card `4242 4242 4242 4242`, any future date, any CVC.
+**Testing in live mode**: open the site with `?test=1` at the end of the address (`https://<your address>/?test=1`). A hidden **Test order** size appears, priced €1 / £1 / $1. Buy it with your own card: it is a real payment that checks the whole flow, and the order is marked `test` so it is never printed. Refund it in the Stripe Dashboard afterwards if you like. (In Stripe's test mode, use card `4242 4242 4242 4242` instead.)
+
+**Currency**: the page guesses from the visitor's country (UK → £, US/Canada/Australia/NZ → $, everyone else → €) and shows a picker in the top right. A visitor's choice is remembered in their browser. The table is `countryCurrency` in `worker/shop.js`. Delivery countries are `countries` there: check your printer ships to all of them.
 
 **Going live**: switch the Stripe Dashboard to live mode, add the same webhook there, and replace both Stripe secrets with the live ones. Instead of the full secret key you can use a *restricted key* (`rk_live_...`) that can only write Checkout Sessions; if Stripe refuses a request, the error names the permission it is missing.
 

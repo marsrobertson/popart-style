@@ -32,6 +32,7 @@
   --benday: #F4CFE3;
   --pop: #FFD60A;
   --hot: #E8007D;
+  --go: #1FC45E;
   --muted: #5A5360;
   --scrim: rgba(18, 18, 18, 0.74);
   --display: "Anton", Impact, "Haettenschweiler", "Arial Narrow Bold", sans-serif;
@@ -116,7 +117,7 @@ body {
   position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%); opacity: 0; white-space: nowrap;
   font-family: var(--display); font-size: 17px; letter-spacing: 0.06em; text-transform: uppercase;
   padding: 6px 18px; cursor: pointer; transition: opacity 0.12s ease;
-  border: 2px solid var(--ink); background: var(--hot); color: var(--paper); box-shadow: 3px 3px 0 var(--ink);
+  border: 2px solid var(--ink); background: var(--go); color: var(--ink); box-shadow: 3px 3px 0 var(--ink);
 }
 .hit.cand:hover .tools, .hit.cand:focus-within .tools,
 .hit.cand:hover .buy-pill, .hit.cand:focus-within .buy-pill { opacity: 1; }
@@ -133,8 +134,8 @@ body {
 canvas { display: block; width: 100%; height: 100%; }
 .hits, .hit { touch-action: manipulation; }
 
-.actions { display: grid; grid-template-columns: 1fr 1.6fr 1fr 1.3fr; gap: 12px; }
-@media (max-width: 560px) { .actions { grid-template-columns: 1fr 1.6fr 1fr; } #buy-main { grid-column: 1 / -1; } }
+.actions { display: grid; grid-template-columns: 1fr 1.6fr 1fr; gap: 12px; }
+#buy-main { grid-column: 1 / -1; font-size: 30px; padding-block: 10px; }
 .btn {
   font-family: var(--display); font-weight: 400; font-size: 20px; letter-spacing: 0.05em;
   text-transform: uppercase; text-decoration: none; text-align: center; line-height: 1.1;
@@ -149,6 +150,7 @@ canvas { display: block; width: 100%; height: 100%; }
 .btn:disabled { opacity: 0.35; cursor: not-allowed; transform: none; box-shadow: 4px 4px 0 var(--ink); }
 .btn.big { background: var(--pop); font-size: 30px; padding-block: 10px; }
 .btn.hot { background: var(--hot); color: var(--paper); }
+.btn.go { background: var(--go); color: var(--ink); }
 
 .hint { margin: 0; font-size: 13px; color: var(--muted); text-align: center; }
 kbd {
@@ -241,7 +243,17 @@ small { color: var(--muted); font-size: 13px; }
 .row4 .btn { font-size: 17px; padding-inline: 6px; }
 @media (max-width: 480px) { .row4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } .nav { width: 32px; } }
 .buy-msg { margin: 0; font-weight: 600; }
-.orders-btn { margin-left: auto; font-size: 16px; padding: 8px 12px; }
+.top-right { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+@media (max-width: 760px) { .top .tag { order: 3; flex-basis: 100%; } }
+.orders-btn { font-size: 16px; padding: 8px 12px; }
+.cur {
+  font: 400 17px var(--display); letter-spacing: 0.05em; color: var(--ink); background-color: var(--paper);
+  border: 3px solid var(--ink); border-radius: 0; box-shadow: 3px 3px 0 var(--ink); padding: 7px 34px 7px 12px; cursor: pointer;
+  appearance: none; -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%23121212' stroke-width='2.5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 11px center;
+}
+.cur:focus-visible { outline: 3px solid var(--hot); outline-offset: 2px; }
 .orders-btn b { font-weight: 400; background: var(--ink); color: var(--pop); padding: 0 7px; }
 .co { display: grid; grid-template-columns: minmax(0, 260px) minmax(0, 1fr); gap: 16px; align-items: start; }
 .co-side { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
@@ -297,8 +309,11 @@ small { color: var(--muted); font-size: 13px; }
 
 <header class="top">
   <h1 class="logo">POP ART <mark>MIXER</mark></h1>
-  <p class="tag">Press random until it looks good. Then save it or buy the print.</p>
-  <button id="orders-open" class="btn orders-btn" type="button" hidden>Orders <b id="orders-n">0</b></button>
+  <p class="tag">Press random until it looks good. Then download it or buy the print.</p>
+  <div class="top-right">
+    <button id="orders-open" class="btn orders-btn" type="button" hidden>Orders <b id="orders-n">0</b></button>
+    <select id="currency" class="cur" aria-label="Currency"></select>
+  </div>
 </header>
 
 <main class="app">
@@ -311,10 +326,10 @@ small { color: var(--muted); font-size: 13px; }
       <div class="actions">
         <button id="back" class="btn" type="button" disabled>Back</button>
         <button id="random" class="btn big" type="button">Random</button>
-        <button id="save" class="btn" type="button">Save</button>
-        <button id="buy-main" class="btn hot" type="button">Buy now</button>
+        <button id="save" class="btn" type="button">Download</button>
+        <button id="buy-main" class="btn go" type="button">Buy now</button>
       </div>
-      <p class="hint"><kbd>Space</kbd> random &nbsp;·&nbsp; click a tile to re-roll it &nbsp;·&nbsp; lock icon keeps a tile &nbsp;·&nbsp; <kbd>1</kbd>–<kbd>5</kbd> compare &nbsp;·&nbsp; <kbd>Z</kbd> back &nbsp;·&nbsp; <kbd>S</kbd> save</p>
+      <p class="hint"><kbd>Space</kbd> random &nbsp;·&nbsp; click a tile to re-roll it &nbsp;·&nbsp; lock icon keeps a tile &nbsp;·&nbsp; <kbd>1</kbd>–<kbd>5</kbd> compare &nbsp;·&nbsp; <kbd>Z</kbd> back &nbsp;·&nbsp; <kbd>D</kbd> download</p>
       <div class="picks" id="picks" hidden>
         <h2>Your picks</h2>
         <div class="strip" id="strip"></div>
@@ -421,7 +436,7 @@ small { color: var(--muted); font-size: 13px; }
       <button id="zoom-edit" class="btn" type="button">Edit</button>
       <button id="zoom-roll" class="btn" type="button">Re-roll</button>
       <button id="zoom-lock" class="btn" type="button" aria-pressed="false">Lock</button>
-      <button id="zoom-save" class="btn" type="button">Save</button>
+      <button id="zoom-save" class="btn" type="button">Download</button>
     </div>
     <p class="hint"><kbd>←</kbd> <kbd>→</kbd> browse the wall &nbsp;·&nbsp; <kbd>Esc</kbd> close</p>
   </div>
@@ -467,8 +482,8 @@ small { color: var(--muted); font-size: 13px; }
           <small>Saved with the order so the shop can reach you about it.</small></label>
         <div class="total"><span>Total</span><b id="buy-total"></b></div>
         <p class="buy-msg" id="buy-msg" role="status"></p>
-        <button id="buy-go" class="btn hot buy-big" type="button">Reserve this print</button>
-        <button id="buy-save" class="btn" type="button">Just save the PNG</button>
+        <button id="buy-go" class="btn go buy-big" type="button">Reserve this print</button>
+        <button id="buy-save" class="btn" type="button">Just download the PNG</button>
       </div>
     </div>
 
@@ -487,10 +502,10 @@ small { color: var(--muted); font-size: 13px; }
           <dt>Placed</dt><dd id="done-date"></dd>
         </dl>
       </div>
-      <a id="done-pay" class="btn hot buy-big" href="#" target="_blank" rel="noopener" hidden>Pay now</a>
+      <a id="done-pay" class="btn go buy-big" href="#" target="_blank" rel="noopener" hidden>Pay now</a>
       <p class="buy-msg" id="done-next" role="status"></p>
       <div class="row">
-        <button id="done-save" class="btn" type="button">Save PNG</button>
+        <button id="done-save" class="btn" type="button">Download PNG</button>
         <button id="done-close" class="btn" type="button">Keep mixing</button>
       </div>
     </div>
@@ -642,7 +657,7 @@ small { color: var(--muted); font-size: 13px; }
     orders: $('orders'), ordersOpen: $('orders-open'), ordersN: $('orders-n'), ordersList: $('orders-list'),
     tasteOn: $('taste-on'), tasteCount: $('taste-count'), tasteReset: $('taste-reset'),
     back: $('back'), random: $('random'), save: $('save'),
-    picks: $('picks'), strip: $('strip'), frame: $('frame'),
+    currency: $('currency'), picks: $('picks'), strip: $('strip'), frame: $('frame'),
     modal: $('modal'), modalImg: $('modal-img'), modalTitle: $('modal-title'), dl: $('dl'), close: $('close'),
   };
   const canvas = $('art');
@@ -652,16 +667,19 @@ small { color: var(--muted); font-size: 13px; }
   function withCtx(c, fn) { const prev = ctx; ctx = c; try { fn(); } finally { ctx = prev; } }
 
   // ---------- shop settings ----------
-  // Prices are placeholders: set your own. `payLink` takes a Stripe Payment Link (https://buy.stripe.com/...),
-  // one per size because each link carries its own price. With no link, Buy reserves the print and charges nothing.
+  // Prices are placeholders: set your own, one per currency. They only apply where no order server answers; with the
+  // server, its prices (worker/shop.js) are shown instead. `payLink` takes a Stripe Payment Link (https://buy.stripe.com/...),
+  // one per size because each link carries its own price (in one currency). With no link, Buy reserves the print and charges nothing.
   // Never put a Stripe secret key (sk_...) in this file: everyone who opens the page can read it.
   const SHOP = {
-    currency: 'GBP',
+    currencies: ['EUR', 'GBP', 'USD'],
+    currency: 'EUR', // picked on load: the visitor's own choice, else a guess from their country (server) or time zone
     sizes: [
-      { id: '30x30cm', label: '30×30 cm', price: 45, payLink: '' },
-      { id: '50x50cm', label: '50×50 cm', price: 75, payLink: '' },
-      { id: '70x70cm', label: '70×70 cm', price: 120, payLink: '' },
+      { id: '30x30cm', label: '30×30 cm', prices: { EUR: 55, GBP: 45, USD: 59 }, payLink: '' },
+      { id: '50x50cm', label: '50×50 cm', prices: { EUR: 89, GBP: 75, USD: 95 }, payLink: '' },
+      { id: '70x70cm', label: '70×70 cm', prices: { EUR: 139, GBP: 120, USD: 149 }, payLink: '' },
     ],
+    shipping: null, // { label, prices: { EUR: 0, ... } }, filled in by the order server
     // The order server (worker/index.js on Cloudflare). On load the page asks `${api}/shop`; if a server answers with
     // card payment on, its sizes and prices replace the ones above and Buy goes to Stripe Checkout. Where nothing answers
     // (GitHub Pages, claude.ai, a plain file) the page falls back to Payment Links or reservations. '' turns this off.
@@ -1314,6 +1332,7 @@ small { color: var(--muted); font-size: 13px; }
   const LOCAL_KEY = 'popart-mixer-orders';
   const canOrder = () => !!(shopLive || dbCap);
   const sizeOf = id => SHOP.sizes.find(s => s.id === id);
+  const priceOf = s => (s && s.prices && typeof s.prices[SHOP.currency] === 'number' ? s.prices[SHOP.currency] : null);
   const pickedSize = () => { const r = document.querySelector('input[name="size"]:checked'); return sizeOf(r && r.value) || SHOP.sizes[0]; };
   const paysNow = s => !!(shopLive || s.payLink);
   // payment addresses must be https (http only for local testing)
@@ -1356,7 +1375,7 @@ small { color: var(--muted); font-size: 13px; }
     els.buySizes.replaceChildren(...SHOP.sizes.flatMap((s, i) => {
       const r = document.createElement('input'), l = document.createElement('label'), p = document.createElement('span');
       r.type = 'radio'; r.name = 'size'; r.id = 'sz' + i; r.value = s.id; r.checked = s.id === keep;
-      l.htmlFor = r.id; p.textContent = money(s.price); l.append(s.label, p);
+      l.htmlFor = r.id; p.textContent = money(priceOf(s)); l.append(s.label, p);
       return [r, l];
     }));
   }
@@ -1383,7 +1402,7 @@ small { color: var(--muted); font-size: 13px; }
   function syncCheckout() {
     if (!buying || els.buyForm.hidden) return;
     const s = pickedSize(), ok = canOrder(), pay = paysNow(s);
-    els.buyTotal.textContent = money(s.price);
+    els.buyTotal.textContent = money(priceOf(s));
     // room view, drawn in centimetres: the print hangs 18 cm above a 160 cm sideboard
     const cm = parseFloat(s.id) || 50, x = 100 - cm / 2, y = 89 - cm;
     [['room-shadow', 1.5], ['room-art', 0], ['room-frame', 0]].forEach(([id, d]) => {
@@ -1391,14 +1410,15 @@ small { color: var(--muted); font-size: 13px; }
       el.setAttribute('x', x + d); el.setAttribute('y', y + d); el.setAttribute('width', cm); el.setAttribute('height', cm);
     });
     $('room-art').setAttribute('href', buying.thumb);
-    $('room-cap').textContent = `To scale: ${s.label} above a 160 cm wide sideboard.`;
+    $('room-cap').textContent = s.id === 'test' ? 'Test order: a real small payment to check the shop works. Nothing is printed or posted.' : `To scale: ${s.label} above a 160 cm wide sideboard.`;
     els.buyGo.hidden = !ok;
     els.buyGo.disabled = false;
     els.buyGo.textContent = pay ? 'Continue to payment' : 'Reserve this print';
     els.buyEmailField.hidden = !ok || pay; // Stripe asks for the email itself
     const photo = state.mode === 'image' && srcImg ? ' Your photo is saved with it for printing.' : '';
-    const ship = shopLive && SHOP.shipping ? (SHOP.shipping.price ? ` Plus ${money(SHOP.shipping.price)} ${SHOP.shipping.label.toLowerCase()}.` : ` ${SHOP.shipping.label}: free.`) : '';
-    els.buyMsg.textContent = !ok ? "This copy of the page can't take orders yet. Save the PNG for now."
+    const sp = SHOP.shipping && priceOf(SHOP.shipping);
+    const ship = shopLive && SHOP.shipping ? (sp ? ` Plus ${money(sp)} ${SHOP.shipping.label.toLowerCase()}.` : ` ${SHOP.shipping.label}: free.`) : '';
+    els.buyMsg.textContent = !ok ? "This copy of the page can't take orders yet. Download the PNG for now."
       : shopLive ? 'Next: secure card payment with Stripe, then you come straight back here. This exact artwork is saved with your order.' + ship + photo
       : pay ? 'Next: card payment with Stripe, in a new tab. This exact artwork is saved with your order.' + photo
       : "Card payment isn't switched on yet, so nothing is charged. Reserve now and this exact artwork is saved with your order." + photo;
@@ -1411,7 +1431,7 @@ small { color: var(--muted); font-size: 13px; }
   async function placeOrder(s, email, status) {
     if (!buying || !canOrder()) throw { code: 'unavailable' };
     const order = {
-      ref: buying.ref, kind: buying.kind, size: s.id, sizeLabel: s.label, price: s.price, currency: SHOP.currency, status, email,
+      ref: buying.ref, kind: buying.kind, size: s.id, sizeLabel: s.label, price: priceOf(s), currency: SHOP.currency, status, email,
       recipe: recipe(buying), thumb: buying.thumb,
       // image mode: the same small square the artwork is drawn from, so the print can be remade without asking for the photo
       source: state.mode === 'image' && srcImg ? jpegUnder(squareCrop(+els.detail.value), 130000) : null,
@@ -1420,10 +1440,10 @@ small { color: var(--muted); font-size: 13px; }
     if (shopLive) {
       // the server issues the reference and the price; it ignores any price sent from here
       const r = await fetch(SHOP.api + '/order', { method: 'POST', headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ kind: order.kind, size: order.size, recipe: order.recipe, thumb: order.thumb, source: order.source }) });
+        body: JSON.stringify({ kind: order.kind, size: order.size, currency: order.currency, recipe: order.recipe, thumb: order.thumb, source: order.source }) });
       const j = await r.json().catch(() => null);
       if (!r.ok || !j || !/^PM-[A-Z0-9]{6}$/.test(j.ref)) throw { code: 'unavailable' };
-      Object.assign(order, { ref: j.ref, key: j.key, price: j.price, currency: j.currency, sizeLabel: j.sizeLabel, status: j.status, at: j.at });
+      Object.assign(order, { test: !!j.test, ref: j.ref, key: j.key, price: j.price, currency: j.currency, sizeLabel: j.sizeLabel, status: j.status, at: j.at });
       if (payable(j.url)) order.payUrl = j.url;
       rememberOrder(order);
     } else {
@@ -1462,10 +1482,10 @@ small { color: var(--muted); font-size: 13px; }
     } catch (e) {
       els.buyGo.disabled = false;
       els.buyMsg.textContent =
-        e && e.code === 'signed_out' ? 'Sign in to claude.ai to order a print. You can still save the PNG.'
-        : e && e.code === 'invalid_argument' ? "Your access to this page is view-only, so it can't save an order. Save the PNG instead."
-        : e && e.code === 'quota_exceeded' ? 'The order book is full right now. Save the PNG instead.'
-        : "That order didn't go through, and nothing was charged. Try again, or save the PNG.";
+        e && e.code === 'signed_out' ? 'Sign in to claude.ai to order a print. You can still download the PNG.'
+        : e && e.code === 'invalid_argument' ? "Your access to this page is view-only, so it can't save an order. Download the PNG instead."
+        : e && e.code === 'quota_exceeded' ? 'The order book is full right now. Download the PNG instead.'
+        : "That order didn't go through, and nothing was charged. Try again, or download the PNG.";
     }
   });
 
@@ -1485,7 +1505,7 @@ small { color: var(--muted); font-size: 13px; }
     els.doneImg.src = order.thumb;
     els.doneRef.textContent = order.ref;
     els.doneCopy.textContent = 'Copy';
-    els.doneItem.textContent = `${order.kind === 'wall' ? 'Wall print' : 'Print'}, ${order.sizeLabel || order.size}`;
+    els.doneItem.textContent = order.test || order.size === 'test' ? 'Test order (not printed)' : `${order.kind === 'wall' ? 'Wall print' : 'Print'}, ${order.sizeLabel || order.size}`;
     els.doneTotal.textContent = money(order.price, order.currency);
     els.doneStatus.textContent = statusLabel(order.status);
     els.doneDate.textContent = order.at ? new Date(order.at).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : '';
@@ -1609,19 +1629,44 @@ small { color: var(--muted); font-size: 13px; }
     const use = n => window.claude.use(n).catch(() => null);
     Promise.all([use('db'), use('user')]).then(([d, u]) => { dbCap = d; userCap = u; syncCheckout(); loadOrders(); });
   }
+  // ---------- currency ----------
+  const CUR_KEY = 'popart-mixer-currency';
+  const CUR_SIGN = { EUR: '€', GBP: '£', USD: '$' };
+  function savedCurrency() { try { return localStorage.getItem(CUR_KEY); } catch (e) { return null; } }
+  // without a server: a guess from the time zone (London → £, the Americas → $, else €)
+  function guessCurrency() {
+    let tz = '';
+    try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) { /* old browser */ }
+    return /^Europe\/(London|Belfast|Guernsey|Jersey|Isle_of_Man)$/.test(tz) ? 'GBP' : /^America\//.test(tz) ? 'USD' : 'EUR';
+  }
+  function setCurrency(c, remember) {
+    if (!SHOP.currencies.includes(c)) c = SHOP.currencies.includes('EUR') ? 'EUR' : SHOP.currencies[0];
+    SHOP.currency = c;
+    if (remember) try { localStorage.setItem(CUR_KEY, c); } catch (e) { /* storage blocked */ }
+    els.currency.replaceChildren(...SHOP.currencies.map(x => {
+      const o = document.createElement('option'); o.value = x; o.textContent = `${CUR_SIGN[x] || ''} ${x}`.trim(); o.selected = x === c; return o;
+    }));
+  }
+  els.currency.addEventListener('change', () => { setCurrency(els.currency.value, true); renderSizes(); syncCheckout(); });
+  setCurrency(savedCurrency() || guessCurrency(), false);
+  renderSizes();
+
   // Is an order server here? Its prices win over the ones in SHOP, because they are what Stripe will charge.
   async function probeShop() {
     if (!SHOP.api || !/^https?:$/.test(location.protocol)) return;
     try {
-      const r = await fetch(SHOP.api + '/shop', { cache: 'no-store' });
+      const r = await fetch(SHOP.api + '/shop' + (new URLSearchParams(location.search).has('test') ? '?test=1' : ''), { cache: 'no-store' });
       if (!r.ok || !/json/.test(r.headers.get('content-type') || '')) return;
       const j = await r.json();
-      const sizes = Array.isArray(j.sizes) ? j.sizes.filter(s => s && typeof s.id === 'string' && typeof s.label === 'string' && typeof s.price === 'number') : [];
-      if (!j.live || !sizes.length) return;
+      const table = v => (v && typeof v === 'object' ? Object.fromEntries(Object.entries(v).filter(([c, n]) => /^[A-Z]{3}$/.test(c) && typeof n === 'number')) : null);
+      const sizes = Array.isArray(j.sizes) ? j.sizes.filter(s => s && typeof s.id === 'string' && typeof s.label === 'string' && table(s.prices)) : [];
+      const curs = Array.isArray(j.currencies) ? j.currencies.filter(c => /^[A-Z]{3}$/.test(c)) : [];
+      if (!j.live || !sizes.length || !curs.length) return;
       shopLive = true;
-      SHOP.sizes = sizes.map(s => ({ id: s.id.slice(0, 40), label: s.label.slice(0, 40), price: s.price, payLink: '' }));
-      if (/^[A-Z]{3}$/.test(j.currency)) SHOP.currency = j.currency;
-      if (j.shipping && typeof j.shipping.label === 'string') SHOP.shipping = { label: j.shipping.label.slice(0, 60), price: +j.shipping.price || 0 };
+      SHOP.sizes = sizes.map(s => ({ id: s.id.slice(0, 40), label: s.label.slice(0, 40), prices: table(s.prices), payLink: '' }));
+      SHOP.currencies = curs;
+      if (j.shipping && typeof j.shipping.label === 'string') SHOP.shipping = { label: j.shipping.label.slice(0, 60), prices: table(j.shipping.prices) || {} };
+      setCurrency(savedCurrency() || j.currency, false);
       renderSizes();
       syncCheckout();
       await loadOrders();
@@ -1704,7 +1749,7 @@ small { color: var(--muted); font-size: 13px; }
     if (typing(e.target)) return;
     if (e.code === 'Space') { e.preventDefault(); randomize(); }
     else if (e.key === 'z' || e.key === 'Z' || e.key === 'Backspace') { e.preventDefault(); back(); }
-    else if (e.key === 's' || e.key === 'S') { e.preventDefault(); save(); }
+    else if ('sSdD'.includes(e.key)) { e.preventDefault(); save(); }
     else if (/^[1-5]$/.test(e.key) && e.target !== els.wall) { e.preventDefault(); setWall(+e.key); }
   });
   document.addEventListener('keyup', e => { if (e.code === 'Space' && !typing(e.target)) e.preventDefault(); });
