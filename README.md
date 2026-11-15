@@ -139,8 +139,39 @@ The full order includes the delivery address, email, recipe, thumbnail and (Imag
 
 - Cloudflare's free plan covers a small shop (100,000 requests a day and 1,000 KV writes a day at the time of writing; an order uses 3–6 writes). Check current limits on Cloudflare's pricing page.
 - The order endpoint is open to anyone, like any shop's basket. Unpaid orders expire after 7 days, which caps the junk someone could store. If spam becomes a problem, add Cloudflare Turnstile or a rate-limiting rule.
-- Print files: orders store a thumbnail and the recipe, not a print-resolution image. Rendering print files from the recipe is the next build.
 - `.assetsignore` keeps the server code, config and README from being served as public files.
+
+## Printing with Gelato
+
+Paid orders can go straight to [Gelato](https://www.gelato.com) to be printed and posted (`worker/printer.js`).
+
+**How it works**: at checkout the page draws the artwork again at print size (150 dpi, at most 4096 px a side: a 70 cm print is about 4096 px and 3 MB) and uploads it with the order, before payment. When Stripe's webhook says "paid", the server sends Gelato the delivery address, the buyer's email and phone, and a private link to that file. Test orders are never sent. A repeated webhook doesn't print twice.
+
+**Start in draft mode** (`orderType: 'draft'` in `worker/shop.js`, the default): each order appears in your Gelato dashboard and waits for you to approve it. Check the first few look right, then switch to `'order'` to print straight away.
+
+**Setup**
+
+1. Gelato dashboard → **Developer → API keys** → create a key. Then:
+   ```bash
+   npx wrangler secret put GELATO_API_KEY
+   ```
+2. Find the product id for each size (posters by default; try `q=300x300`, `q=500x500`, `q=700x700`):
+   ```bash
+   curl -H "Authorization: Bearer $ADMIN_TOKEN" "https://<your address>/api/admin/gelato/products?catalog=posters&q=300x300"
+   ```
+   Put the ids into `printer.products` in `worker/shop.js`, then `npx wrangler deploy`. Sizes with no id are left for you to send by hand.
+3. Optional, for "Shipped" and tracking on the buyer's Orders list: set a secret path, then add a webhook in the Gelato dashboard (order status updates) pointing at `https://<your address>/api/gelato/webhook/<that secret>`.
+   ```bash
+   npx wrangler secret put GELATO_WEBHOOK_KEY
+   ```
+
+**If something goes wrong**, the order's `print` field says why (`manual`, `failed` with Gelato's message, `draft`, `sent`). Fix it, then resend:
+
+```bash
+curl -X POST -H "Authorization: Bearer $ADMIN_TOKEN" https://<your address>/api/admin/order/PM-XXXXXX/print
+```
+
+**Not verified yet**: Gelato's own docs block automated reading, so the request format follows Gelato's published API description (`POST https://order.gelatoapis.com/v4/orders`, `X-API-KEY` header). The first draft order is the real check. The status webhook's fields (`orderReferenceId`, `fulfillmentStatus`, tracking under `items[].fulfillments[]`) are a best reading of the same description.
 
 ## Favicon and link preview
 
@@ -159,6 +190,5 @@ Each tile picks a background, then a "big text" colour that works with it. A pai
 ## Ideas for later
 
 - A public gallery: users submit their best picks and vote.
-- Send paid orders to a print-on-demand service, and render print-resolution files from the stored recipe.
 - Order emails from the shop (shipped, with tracking), and a small seller page instead of curl.
 - Prune or roll up old `saves` rows before the shared store's 25,000-document cap.

@@ -1446,6 +1446,8 @@ small { color: var(--muted); font-size: 13px; }
       Object.assign(order, { test: !!j.test, ref: j.ref, key: j.key, price: j.price, currency: j.currency, sizeLabel: j.sizeLabel, status: j.status, at: j.at });
       if (payable(j.url)) order.payUrl = j.url;
       rememberOrder(order);
+      els.buyMsg.textContent = 'Preparing your print file…';
+      await uploadPrint(order, s);
     } else {
       const uid = userCap ? await userCap.id() : null;
       if (!uid) throw { code: 'signed_out' };
@@ -1629,6 +1631,20 @@ small { color: var(--muted); font-size: 13px; }
     const use = n => window.claude.use(n).catch(() => null);
     Promise.all([use('db'), use('user')]).then(([d, u]) => { dbCap = d; userCap = u; syncCheckout(); loadOrders(); });
   }
+  // The print file: the same artwork drawn again at print resolution (SHOP.printDpi, set by the server),
+  // capped at 4096 px a side, the largest canvas iPhones can draw. Uploaded before payment, so a paid order always has it.
+  async function uploadPrint(order, s) {
+    const cm = parseFloat(s.id) || 30;
+    const px = Math.min(4096, Math.max(SIZE, Math.round(cm / 2.54 * (SHOP.printDpi || 150))));
+    const c = document.createElement('canvas');
+    if (buying.kind === 'wall') paint(c, buying.cands, buying.k, px); else paint(c, [buying.tiles], 1, px);
+    const blob = await new Promise(res => c.toBlob(res, 'image/jpeg', 0.92));
+    c.width = c.height = 0; // let the browser free the memory
+    if (!blob) throw { code: 'unavailable' };
+    const r = await fetch(`${SHOP.api}/order/${order.ref}/file`, { method: 'PUT', headers: { 'content-type': 'image/jpeg', 'x-order-key': order.key }, body: blob });
+    if (!r.ok) throw { code: 'unavailable' };
+  }
+
   // ---------- currency ----------
   const CUR_KEY = 'popart-mixer-currency';
   const CUR_SIGN = { EUR: '€', GBP: '£', USD: '$' };
@@ -1672,6 +1688,7 @@ small { color: var(--muted); font-size: 13px; }
       shopLive = true;
       SHOP.sizes = sizes.map(s => ({ id: s.id.slice(0, 40), label: s.label.slice(0, 40), prices: table(s.prices), payLink: '' }));
       SHOP.currencies = curs;
+      if (typeof j.printDpi === 'number' && j.printDpi >= 72 && j.printDpi <= 300) SHOP.printDpi = j.printDpi;
       if (j.shipping && typeof j.shipping.label === 'string') SHOP.shipping = { label: j.shipping.label.slice(0, 60), prices: table(j.shipping.prices) || {} };
       setCurrency(savedCurrency() || j.currency, false);
       renderSizes();

@@ -4,24 +4,32 @@
 //   POST /api/order                 save an order, open a Stripe Checkout Session, reply {ref, key, url, ...}
 //   GET  /api/order/<ref>           order status for the buyer (needs the x-order-key header from the order reply)
 //   GET  /api/thumb/<ref>.jpg       order thumbnail (shown on the Stripe payment page)
-//   POST /api/stripe/webhook        Stripe events: marks orders paid
+//   PUT  /api/order/<ref>/file      the print file (JPEG), uploaded by the page right after the order (x-order-key)
+//   GET  /api/print/<ref>/<token>.jpg  the print file, for the printer (secret token in the address)
+//   POST /api/stripe/webhook        Stripe events: marks orders paid, then sends them to Gelato
+//   POST /api/gelato/webhook/<GELATO_WEBHOOK_KEY>  Gelato status updates: printing, shipped, tracking
 //   GET  /api/admin/orders          list orders            (Authorization: Bearer <ADMIN_TOKEN>)
 //   GET  /api/admin/order/<ref>     one order, everything  (same)
 //   POST /api/admin/order/<ref>     {"status": "printing"} (same)
+//   POST /api/admin/order/<ref>/print  send (or resend) a paid order to Gelato (same)
+//   GET  /api/admin/gelato/products?catalog=posters&q=300x300  find Gelato product ids (same)
 //
 // Secrets (set with `npx wrangler secret put NAME`, never in a file):
 //   STRIPE_SECRET_KEY      sk_test_... / sk_live_... or a restricted key rk_... with Checkout Sessions write access
 //   STRIPE_WEBHOOK_SECRET  whsec_... from the webhook endpoint in the Stripe Dashboard
 //   ADMIN_TOKEN            any long random string, for the /api/admin routes
+//   GELATO_API_KEY         optional: sends paid orders to Gelato. GELATO_WEBHOOK_KEY (16+ chars) for its status updates
 //   TEST_KEY               optional, 12+ characters: /?test=<TEST_KEY> shows a hidden €1 / £1 / $1 test item
 // Binding: ORDERS (a KV namespace). Optional var: SITE_URL (where buyers return after paying; defaults to this Worker's own address).
 
 import { SHOP } from './shop.js';
+import { sendToPrinter, gelatoWebhook, gelatoProducts } from './printer.js';
 
 const REF_ABC = '23456789ABCDEFGHJKMNPQRSTUVWXYZ';
 const REF_RE = /^PM-[2-9A-HJKMNP-Z]{6}$/;
 const STATUSES = ['awaiting_payment', 'paid', 'printing', 'shipped', 'cancelled', 'refunded'];
 const MAX_BODY = 512 * 1024;
+const MAX_PRINT = 20 * 1024 * 1024; // KV allows 25 MiB per value
 const enc = new TextEncoder();
 
 export default {
@@ -30,7 +38,7 @@ export default {
     if (!url.pathname.startsWith('/api/')) return env.ASSETS ? env.ASSETS.fetch(request) : new Response('Not found', { status: 404 });
     if (request.method === 'OPTIONS') return cors(env, request, new Response(null, { status: 204 }));
     try {
-      return cors(env, request, await route(request, env, url));
+      return cors(env, request, await route(request, env, url, ctx));
     } catch (e) {
       if (e instanceof Response) return cors(env, request, e);
       console.error(e && e.stack || e);
@@ -39,14 +47,20 @@ export default {
   },
 };
 
-async function route(request, env, url) {
+async function route(request, env, url, ctx) {
   const p = url.pathname, m = request.method;
   let r;
   if (p === '/api/shop' && m === 'GET') return shopInfo(request, env, url);
   if (p === '/api/order' && m === 'POST') return createOrder(request, env, url);
   if ((r = p.match(/^\/api\/order\/(PM-[A-Z0-9]{6})$/)) && m === 'GET') return orderStatus(request, env, url, r[1]);
   if ((r = p.match(/^\/api\/thumb\/(PM-[A-Z0-9]{6})\.jpg$/)) && m === 'GET') return thumb(env, r[1]);
-  if (p === '/api/stripe/webhook' && m === 'POST') return webhook(request, env);
+  if ((r = p.match(/^\/api\/order\/(PM-[A-Z0-9]{6})\/file$/)) && m === 'PUT') return uploadPrint(request, env, r[1]);
+  if ((r = p.match(/^\/api\/print\/(PM-[A-Z0-9]{6})\/([A-Za-z0-9_-]{20,})\.jpg$/)) && m === 'GET') return printFile(env, r[1], r[2]);
+  if (p === '/api/stripe/webhook' && m === 'POST') return webhook(request, env, url, ctx);
+  if ((r = p.match(/^\/api\/gelato\/webhook\/([A-Za-z0-9_-]+)$/)) && m === 'POST') {
+    const res = await gelatoWebhook(request, env, r[1], { loadOrder, saveOrder, safeEqual });
+    return json({ ok: res.status === 200 }, res.status);
+  }
   if (p.startsWith('/api/admin/')) {
     await requireAdmin(request, env);
     if (p === '/api/admin/orders' && m === 'GET') return adminList(env, url);
@@ -54,6 +68,9 @@ async function route(request, env, url) {
       if (m === 'GET') return adminGet(env, r[1]);
       if (m === 'POST') return adminUpdate(request, env, r[1]);
     }
+    if ((r = p.match(/^\/api\/admin\/order\/(PM-[A-Z0-9]{6})\/print$/)) && m === 'POST')
+      return json(await sendToPrinter(env, r[1], origin(env, url), { loadOrder, saveOrder }, true));
+    if (p === '/api/admin/gelato/products' && m === 'GET') return json(await gelatoProducts(env, url));
   }
   return json({ error: 'not_found' }, 404);
 }
@@ -68,6 +85,7 @@ function shopInfo(request, env, url) {
     currency: SHOP.currencies.includes(guess) ? guess : SHOP.defaultCurrency,
     sizes: sizes.map(({ id, label, prices }) => ({ id, label, prices })),
     shipping: SHOP.shipping,
+    printDpi: SHOP.printer.dpi,
     live: !!env.STRIPE_SECRET_KEY,
     test: /^(sk|rk)_test_/.test(env.STRIPE_SECRET_KEY || ''),
   }, 200, { 'cache-control': 'no-store' });
@@ -153,6 +171,7 @@ function newSession(env, url, order) {
     payment_intent_data: { metadata: { ref: order.ref } },
     line_items: [{ quantity: 1, price_data: { currency: order.currency.toLowerCase(), unit_amount: minor(order.price), product_data: product } }],
     shipping_address_collection: { allowed_countries: SHOP.countries },
+    phone_number_collection: { enabled: true }, // couriers ask for one
     shipping_options: [{ shipping_rate_data: { type: 'fixed_amount', display_name: SHOP.shipping.label, fixed_amount: { amount: minor(order.shipping || 0), currency: order.currency.toLowerCase() } } }],
     success_url: back + '&paid=1',
     cancel_url: back + '&cancelled=1',
@@ -160,8 +179,34 @@ function newSession(env, url, order) {
   return stripe(env, 'POST', 'checkout/sessions', params);
 }
 
+// ---------- print file ----------
+// The page draws the artwork at print size and uploads it here before the buyer pays.
+async function uploadPrint(request, env, ref) {
+  const order = await loadOrder(env, ref);
+  const key = request.headers.get('x-order-key') || '';
+  if (!order || !key || !safeEqual(await sha256(key), order.keyHash)) return json({ error: 'not_found' }, 404);
+  if (order.status !== 'awaiting_payment') return json({ error: 'locked' }, 409);
+  if (!/^image\/jpeg/.test(request.headers.get('content-type') || '')) return json({ error: 'jpeg_only' }, 415);
+  const buf = await request.arrayBuffer();
+  const b = new Uint8Array(buf);
+  if (buf.byteLength < 1000 || buf.byteLength > MAX_PRINT || b[0] !== 0xFF || b[1] !== 0xD8) return json({ error: 'bad_file' }, 400);
+  await env.ORDERS.put('print:' + ref, buf, { expirationTtl: SHOP.unpaidDays * 86400 });
+  order.printToken = order.printToken || randomKey();
+  order.printBytes = buf.byteLength;
+  await saveOrder(env, order);
+  return json({ ok: true, bytes: buf.byteLength });
+}
+async function printFile(env, ref, token) {
+  const order = await loadOrder(env, ref);
+  if (!order || !order.printToken || !safeEqual(token, order.printToken)) return new Response('Not found', { status: 404 });
+  const buf = await env.ORDERS.get('print:' + ref, 'arrayBuffer');
+  if (!buf) return new Response('Not found', { status: 404 });
+  return new Response(buf, { headers: { 'content-type': 'image/jpeg', 'content-disposition': `inline; filename="${ref}.jpg"`, 'cache-control': 'private, max-age=3600' } });
+}
+const origin = (env, url) => (env.PUBLIC_URL || url.origin).replace(/\/+$/, '');
+
 // ---------- Stripe webhook ----------
-async function webhook(request, env) {
+async function webhook(request, env, url, ctx) {
   const body = await request.text();
   if (!env.STRIPE_WEBHOOK_SECRET || !(await verifyStripe(body, request.headers.get('stripe-signature') || '', env.STRIPE_WEBHOOK_SECRET)))
     return json({ error: 'bad_signature' }, 400);
@@ -172,7 +217,12 @@ async function webhook(request, env) {
     const order = await loadOrder(env, ref);
     if (order) {
       if ((event.type === 'checkout.session.completed' && s.payment_status === 'paid') || event.type === 'checkout.session.async_payment_succeeded')
+      {
         await markPaid(env, order, s);
+        // then off to the printer, after Stripe has its reply (it retries slow webhooks)
+        const job = sendToPrinter(env, ref, origin(env, url), { loadOrder, saveOrder }).catch(e => console.error('printer', e));
+        if (ctx && ctx.waitUntil) ctx.waitUntil(job); else await job;
+      }
       else if (event.type === 'checkout.session.async_payment_failed' && order.status === 'awaiting_payment')
         { order.note = 'Payment failed'; await saveOrder(env, order); }
     }
@@ -185,14 +235,14 @@ async function markPaid(env, order, s) {
   const cd = s.customer_details || {};
   const ship = (s.collected_information && s.collected_information.shipping_details) || s.shipping_details || null;
   Object.assign(order, {
-    status: 'paid', paidAt: Date.now(), email: cd.email || null, name: (ship && ship.name) || cd.name || null,
+    status: 'paid', paidAt: Date.now(), email: cd.email || null, phone: cd.phone || null, name: (ship && ship.name) || cd.name || null,
     shippingAddress: (ship && ship.address) || null, amountPaid: typeof s.amount_total === 'number' ? s.amount_total / 100 : null,
     paymentIntent: s.payment_intent || null,
   });
   await saveOrder(env, order);
   // keep the images as long as the paid order: they are what gets printed
-  for (const k of ['thumb:', 'source:']) {
-    const v = await env.ORDERS.get(k + order.ref);
+  for (const k of ['thumb:', 'source:', 'print:']) {
+    const v = await env.ORDERS.get(k + order.ref, k === 'print:' ? 'arrayBuffer' : 'text');
     if (v) await env.ORDERS.put(k + order.ref, v);
   }
 }
@@ -231,7 +281,7 @@ async function adminList(env, url) {
 async function adminGet(env, ref) {
   const order = await loadOrder(env, ref);
   if (!order) return json({ error: 'not_found' }, 404);
-  const { keyHash, ...rest } = order;
+  const { keyHash, printToken, ...rest } = order;
   return json({ ...rest, thumb: await env.ORDERS.get('thumb:' + ref), source: await env.ORDERS.get('source:' + ref) });
 }
 async function adminUpdate(request, env, ref) {

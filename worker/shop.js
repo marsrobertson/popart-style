@@ -19,6 +19,16 @@ export const SHOP = {
   countries: ['GB', 'IE', 'FR', 'DE', 'NL', 'BE', 'LU', 'AT', 'ES', 'PT', 'IT', 'PL', 'CZ', 'DK', 'SE', 'FI', 'NO', 'CH', 'US', 'CA'],
   // Visitor's country (from Cloudflare) → currency picked for them. Anyone can change it with the picker.
   countryCurrency: { GB: 'GBP', GG: 'GBP', JE: 'GBP', IM: 'GBP', US: 'USD', CA: 'USD', AU: 'USD', NZ: 'USD' },
+  // Print on demand with Gelato (worker/printer.js). Needs the GELATO_API_KEY secret.
+  printer: {
+    // Gelato product id per size. Find them with /api/admin/gelato/products?catalog=posters&q=300x300 (see README).
+    products: { '30x30cm': '', '50x50cm': '', '70x70cm': '' },
+    // 'draft': each paid order waits in your Gelato dashboard until you press approve (start here).
+    // 'order': printed and posted straight away.
+    orderType: 'draft',
+    shipmentMethodUid: '', // '' = Gelato's default
+    dpi: 150, // print file resolution; capped at 4096 px a side (the largest canvas iPhones can draw)
+  },
   // Unpaid orders are deleted after this many days; paid ones are kept.
   unpaidDays: 7,
 };

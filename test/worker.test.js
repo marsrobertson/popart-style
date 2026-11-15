@@ -2,6 +2,7 @@
 import assert from 'node:assert/strict';
 import { webcrypto } from 'node:crypto';
 import worker from '../worker/index.js';
+import { SHOP } from '../worker/shop.js';
 
 const kv = new Map();
 const ORDERS = {
@@ -13,8 +14,13 @@ const env = { ORDERS, TEST_KEY: 'private-test-code-123', STRIPE_SECRET_KEY: 'sk_
 
 // fake Stripe
 const sessions = new Map(); let calls = [];
+const gelato = [];
 globalThis.fetch = async (url, init = {}) => {
   calls.push({ url, init });
+  if (String(url).startsWith('https://order.gelatoapis.com/')) {
+    assert.equal(init.headers['x-api-key'], 'gelato-key');
+    gelato.push(JSON.parse(init.body)); return new Response(JSON.stringify({ id: 'gel_' + gelato.length }), { status: 200 });
+  }
   assert.equal(init.headers.authorization, 'Bearer sk_test_x');
   const u = new URL(url);
   if (u.pathname === '/v1/checkout/sessions' && init.method === 'POST') {
@@ -109,6 +115,20 @@ const event = ref => JSON.stringify({ type: 'checkout.session.completed', data: 
   customer_details: { email: 'buyer@example.com', name: 'Ann' },
   collected_information: { shipping_details: { name: 'Ann', address: { line1: '1 High St', city: 'London', postal_code: 'N1', country: 'GB' } } } } } });
 
+const jpeg = new Uint8Array(5000); jpeg[0] = 0xFF; jpeg[1] = 0xD8;
+await t('print file upload needs the key and a JPEG', async () => {
+  const put = (body, key, type = 'image/jpeg') => call(`/api/order/${order.ref}/file`, { method: 'PUT', headers: { 'content-type': type, 'x-order-key': key }, body });
+  assert.equal((await put(jpeg, 'wrong')).status, 404);
+  assert.equal((await put(new Uint8Array(5000), order.key)).status, 400);
+  assert.equal((await put(jpeg, order.key, 'image/png')).status, 415);
+  assert.equal((await put(jpeg, order.key)).status, 200);
+  const o = await ORDERS.get('order:' + order.ref, 'json');
+  assert.equal(o.printBytes, 5000);
+  assert.equal((await call(`/api/print/${order.ref}/${'x'.repeat(32)}.jpg`)).status, 404);
+  const f = await call(`/api/print/${order.ref}/${o.printToken}.jpg`);
+  assert.equal(f.status, 200); assert.equal((await f.arrayBuffer()).byteLength, 5000);
+});
+env.GELATO_API_KEY = 'gelato-key'; SHOP.printer.products['50x50cm'] = 'flat_500x500-mm_test';
 await t('webhook rejects bad or old signatures', async () => {
   const body = event(order.ref);
   assert.equal((await post('/api/stripe/webhook', body, { 'stripe-signature': await sign(body, 'whsec_wrong') })).status, 400);
@@ -120,10 +140,37 @@ await t('webhook marks paid and keeps images', async () => {
   const body = event(order.ref);
   assert.equal((await post('/api/stripe/webhook', body, { 'stripe-signature': await sign(body) })).status, 200);
   const o = await ORDERS.get('order:' + order.ref, 'json');
-  assert.equal(o.status, 'paid'); assert.equal(o.email, 'buyer@example.com'); assert.equal(o.shippingAddress.city, 'London'); assert.equal(o.amountPaid, 75);
-  assert.equal(kv.get('order:' + order.ref).ttl, undefined); assert.equal(kv.get('thumb:' + order.ref).ttl, undefined);
+  assert.equal(o.status, 'printing'); assert.equal(o.email, 'buyer@example.com'); assert.equal(o.shippingAddress.city, 'London'); assert.equal(o.amountPaid, 75);
+  assert.equal(kv.get('order:' + order.ref).ttl, undefined); assert.equal(kv.get('thumb:' + order.ref).ttl, undefined); assert.equal(kv.get('print:' + order.ref).ttl, undefined);
+  // sent to Gelato as a draft with the address and a private file link
+  assert.equal(gelato.length, 1);
+  const g = gelato[0];
+  assert.equal(g.orderType, 'draft'); assert.equal(g.orderReferenceId, order.ref); assert.equal(g.items[0].productUid, 'flat_500x500-mm_test');
+  assert.equal(g.items[0].files[0].url, `${base}/api/print/${order.ref}/${o.printToken}.jpg`);
+  assert.equal(g.shippingAddress.firstName, 'Ann'); assert.equal(g.shippingAddress.city, 'London'); assert.equal(g.shippingAddress.country, 'GB');
+  const after = await ORDERS.get('order:' + order.ref, 'json');
+  assert.equal(after.print.status, 'draft'); assert.equal(after.print.gelatoId, 'gel_1'); assert.equal(after.status, 'printing');
+  // a repeated webhook does not print twice
+  assert.equal((await post('/api/stripe/webhook', body, { 'stripe-signature': await sign(body) })).status, 200);
+  assert.equal(gelato.length, 1);
   const j = await (await call('/api/order/' + order.ref, { headers: { 'x-order-key': order.key } })).json();
-  assert.equal(j.status, 'paid'); assert.equal(j.url, null); assert.equal(j.shippingAddress, undefined);
+  assert.equal(j.status, 'printing'); assert.equal(j.url, null); assert.equal(j.shippingAddress, undefined);
+});
+await t('Gelato status webhook: shipped + tracking, needs the secret path', async () => {
+  env.GELATO_WEBHOOK_KEY = 'gelato-hook-secret-123';
+  const ev = { orderReferenceId: order.ref, fulfillmentStatus: 'shipped', items: [{ fulfillments: [{ trackingUrl: 'https://track.example/RM1' }] }] };
+  assert.equal((await post('/api/gelato/webhook/wrong-secret', ev)).status, 404);
+  assert.equal((await post('/api/gelato/webhook/gelato-hook-secret-123', ev)).status, 200);
+  const j = await (await call('/api/order/' + order.ref, { headers: { 'x-order-key': order.key } })).json();
+  assert.equal(j.status, 'shipped'); assert.equal(j.tracking, 'https://track.example/RM1');
+});
+await t('test orders are never sent to the printer', async () => {
+  const r = await (await post('/api/order', { size: 'test', currency: 'EUR', thumb, testKey: 'private-test-code-123' })).json();
+  const ev = JSON.stringify({ type: 'checkout.session.completed', data: { object: { client_reference_id: r.ref, payment_status: 'paid', amount_total: 100,
+    customer_details: { email: 'me@example.com' }, collected_information: { shipping_details: { name: 'Me', address: { line1: 'x', country: 'GB' } } } } } });
+  await post('/api/stripe/webhook', ev, { 'stripe-signature': await sign(ev) });
+  assert.equal(gelato.length, 1);
+  assert.equal((await ORDERS.get('order:' + r.ref, 'json')).print.status, 'skipped');
 });
 await t('status check marks paid even without the webhook', async () => {
   const r = await (await post('/api/order', { size: '30x30cm', thumb })).json();
@@ -136,7 +183,7 @@ await t('admin routes need the token', async () => {
   assert.equal((await call('/api/admin/orders', { headers: { authorization: 'Bearer nope' } })).status, 401);
   const auth = { authorization: 'Bearer ' + env.ADMIN_TOKEN };
   const list = await (await call('/api/admin/orders?status=paid', { headers: auth })).json();
-  assert.equal(list.orders.length, 2);
+  assert.equal(list.orders.length, 2); // the test order and the 30x30 (the first is now shipped)
   const full = await (await call('/api/admin/order/' + order.ref, { headers: auth })).json();
   assert.equal(full.shippingAddress.line1, '1 High St'); assert.equal(full.keyHash, undefined); assert.ok(full.thumb.startsWith('data:image/jpeg'));
   assert.equal((await post('/api/admin/order/' + order.ref, { status: 'lost' }, auth)).status, 400);
