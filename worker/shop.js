@@ -10,8 +10,8 @@ export const SHOP = {
     { id: '50x50cm', label: '50×50 cm', prices: { EUR: 89, GBP: 75, USD: 95 } },
     { id: '70x70cm', label: '70×70 cm', prices: { EUR: 139, GBP: 120, USD: 149 } },
   ],
-  // A real €1 / £1 / $1 payment for testing the whole flow in live mode. Hidden: it only appears when the page
-  // is opened with ?test=1 at the end of the address. Orders for it are marked test: true and are not printed.
+  // A real €1 / £1 / $1 payment for testing the whole flow in live mode. Hidden: it only appears on the private link
+  // /?test=<TEST_KEY> (TEST_KEY is a Worker secret). Orders for it are marked test: true and are not printed.
   testSize: { id: 'test', label: 'Test order', prices: { EUR: 1, GBP: 1, USD: 1 }, test: true },
   // One flat delivery rate shown at checkout. 0 = free delivery.
   shipping: { label: 'Tracked delivery', prices: { EUR: 0, GBP: 0, USD: 0 } },

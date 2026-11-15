@@ -109,7 +109,7 @@ It prints the address, like `https://popart-mixer.<you>.workers.dev`. Then in th
 npx wrangler secret put STRIPE_WEBHOOK_SECRET
 ```
 
-**Testing in live mode**: open the site with `?test=1` at the end of the address (`https://<your address>/?test=1`). A hidden **Test order** size appears, priced €1 / £1 / $1. Buy it with your own card: it is a real payment that checks the whole flow, and the order is marked `test` so it is never printed. Refund it in the Stripe Dashboard afterwards if you like. (In Stripe's test mode, use card `4242 4242 4242 4242` instead.)
+**Testing in live mode**: set a private test code once with `npx wrangler secret put TEST_KEY` (12+ characters, e.g. from `openssl rand -hex 8`), then open `https://<your address>/?test=<that code>`. Only that link shows a hidden **Test order** size, priced €1 / £1 / $1. Buy it with your own card: it is a real payment that checks the whole flow, and the order is marked `test` so it is never printed. Refund it in the Stripe Dashboard afterwards if you like. (In Stripe's test mode, use card `4242 4242 4242 4242` instead.)
 
 **Currency**: the page guesses from the visitor's country (UK → £, US/Canada/Australia/NZ → $, everyone else → €) and shows a picker in the top right. A visitor's choice is remembered in their browser. The table is `countryCurrency` in `worker/shop.js`. Delivery countries are `countries` there: check your printer ships to all of them.
 

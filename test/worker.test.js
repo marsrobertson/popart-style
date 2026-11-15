@@ -9,7 +9,7 @@ const ORDERS = {
   async put(k, v, o = {}) { kv.set(k, { v, meta: o.metadata, ttl: o.expirationTtl }); },
   async list({ prefix }) { return { keys: [...kv].filter(([k]) => k.startsWith(prefix)).map(([name, e]) => ({ name, metadata: e.meta })), list_complete: true }; },
 };
-const env = { ORDERS, STRIPE_SECRET_KEY: 'sk_test_x', STRIPE_WEBHOOK_SECRET: 'whsec_test', ADMIN_TOKEN: 'admin-token-long-enough-123' };
+const env = { ORDERS, TEST_KEY: 'private-test-code-123', STRIPE_SECRET_KEY: 'sk_test_x', STRIPE_WEBHOOK_SECRET: 'whsec_test', ADMIN_TOKEN: 'admin-token-long-enough-123' };
 
 // fake Stripe
 const sessions = new Map(); let calls = [];
@@ -43,7 +43,8 @@ await t('currency guessed from country; test product only with ?test', async () 
   assert.equal((await (await call('/api/shop', { headers: { 'cf-ipcountry': 'GB' } })).json()).currency, 'GBP');
   assert.equal((await (await call('/api/shop', { headers: { 'cf-ipcountry': 'US' } })).json()).currency, 'USD');
   assert.equal((await (await call('/api/shop', { headers: { 'cf-ipcountry': 'PL' } })).json()).currency, 'EUR');
-  const j = await (await call('/api/shop?test=1')).json();
+  assert.equal((await (await call('/api/shop?test=1')).json()).sizes.length, 3, 'wrong code: no test item');
+  const j = await (await call('/api/shop?test=private-test-code-123')).json();
   assert.equal(j.sizes.at(-1).id, 'test'); assert.equal(j.sizes.at(-1).prices.EUR, 1);
 });
 await t('rejects bad orders', async () => {
@@ -71,7 +72,8 @@ await t('creates order + checkout session with server price', async () => {
   assert.equal(kv.get('order:' + order.ref).ttl, 7 * 86400);
 });
 await t('test order: 1 EUR, marked test', async () => {
-  const r = await (await post('/api/order', { size: 'test', currency: 'EUR', thumb })).json();
+  assert.equal((await post('/api/order', { size: 'test', currency: 'EUR', thumb })).status, 400, 'no code: refused');
+  const r = await (await post('/api/order', { size: 'test', currency: 'EUR', thumb, testKey: 'private-test-code-123' })).json();
   assert.equal(r.price, 1); assert.equal(r.currency, 'EUR'); assert.equal(r.test, true);
   const p = [...sessions.values()].at(-1).params;
   assert.equal(p.get('line_items[0][price_data][unit_amount]'), '100'); assert.equal(p.get('line_items[0][price_data][currency]'), 'eur');

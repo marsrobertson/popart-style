@@ -13,6 +13,7 @@
 //   STRIPE_SECRET_KEY      sk_test_... / sk_live_... or a restricted key rk_... with Checkout Sessions write access
 //   STRIPE_WEBHOOK_SECRET  whsec_... from the webhook endpoint in the Stripe Dashboard
 //   ADMIN_TOKEN            any long random string, for the /api/admin routes
+//   TEST_KEY               optional, 12+ characters: /?test=<TEST_KEY> shows a hidden €1 / £1 / $1 test item
 // Binding: ORDERS (a KV namespace). Optional var: SITE_URL (where buyers return after paying; defaults to this Worker's own address).
 
 import { SHOP } from './shop.js';
@@ -61,7 +62,7 @@ async function route(request, env, url) {
 function shopInfo(request, env, url) {
   const country = (request.cf && request.cf.country) || request.headers.get('cf-ipcountry') || '';
   const guess = SHOP.countryCurrency[country] || SHOP.defaultCurrency;
-  const sizes = url.searchParams.has('test') ? [...SHOP.sizes, SHOP.testSize] : SHOP.sizes;
+  const sizes = isTester(env, url.searchParams.get('test')) ? [...SHOP.sizes, SHOP.testSize] : SHOP.sizes;
   return json({
     currencies: SHOP.currencies,
     currency: SHOP.currencies.includes(guess) ? guess : SHOP.defaultCurrency,
@@ -72,11 +73,14 @@ function shopInfo(request, env, url) {
   }, 200, { 'cache-control': 'no-store' });
 }
 
+// The €1 test item exists only for whoever has the TEST_KEY secret (a private link: /?test=<TEST_KEY>).
+const isTester = (env, k) => !!(env.TEST_KEY && env.TEST_KEY.length >= 12 && typeof k === 'string' && safeEqual(k, env.TEST_KEY));
+
 // ---------- orders ----------
 async function createOrder(request, env, url) {
   if (!env.STRIPE_SECRET_KEY) return json({ error: 'payments_off' }, 503);
   const body = await readJson(request);
-  const size = [...SHOP.sizes, SHOP.testSize].find(s => s.id === body.size);
+  const size = [...SHOP.sizes, ...(isTester(env, body.testKey) ? [SHOP.testSize] : [])].find(s => s.id === body.size);
   if (!size) return json({ error: 'bad_size' }, 400);
   const currency = SHOP.currencies.includes(body.currency) ? body.currency : SHOP.defaultCurrency;
   const price = size.prices[currency];

@@ -1440,7 +1440,7 @@ small { color: var(--muted); font-size: 13px; }
     if (shopLive) {
       // the server issues the reference and the price; it ignores any price sent from here
       const r = await fetch(SHOP.api + '/order', { method: 'POST', headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ kind: order.kind, size: order.size, currency: order.currency, recipe: order.recipe, thumb: order.thumb, source: order.source }) });
+        body: JSON.stringify({ kind: order.kind, size: order.size, currency: order.currency, testKey: testKey() || undefined, recipe: order.recipe, thumb: order.thumb, source: order.source }) });
       const j = await r.json().catch(() => null);
       if (!r.ok || !j || !/^PM-[A-Z0-9]{6}$/.test(j.ref)) throw { code: 'unavailable' };
       Object.assign(order, { test: !!j.test, ref: j.ref, key: j.key, price: j.price, currency: j.currency, sizeLabel: j.sizeLabel, status: j.status, at: j.at });
@@ -1651,11 +1651,18 @@ small { color: var(--muted); font-size: 13px; }
   setCurrency(savedCurrency() || guessCurrency(), false);
   renderSizes();
 
+  // Private test link /?test=<code>: remembered for this tab, so it survives the trip to Stripe and back.
+  function testKey() {
+    const q = new URLSearchParams(location.search).get('test');
+    try { if (q) sessionStorage.setItem('popart-mixer-test', q); return q || sessionStorage.getItem('popart-mixer-test') || ''; } catch (e) { return q || ''; }
+  }
+
   // Is an order server here? Its prices win over the ones in SHOP, because they are what Stripe will charge.
   async function probeShop() {
     if (!SHOP.api || !/^https?:$/.test(location.protocol)) return;
     try {
-      const r = await fetch(SHOP.api + '/shop' + (new URLSearchParams(location.search).has('test') ? '?test=1' : ''), { cache: 'no-store' });
+      const tk = testKey();
+      const r = await fetch(SHOP.api + '/shop' + (tk ? '?test=' + encodeURIComponent(tk) : ''), { cache: 'no-store' });
       if (!r.ok || !/json/.test(r.headers.get('content-type') || '')) return;
       const j = await r.json();
       const table = v => (v && typeof v === 'object' ? Object.fromEntries(Object.entries(v).filter(([c, n]) => /^[A-Z]{3}$/.test(c) && typeof n === 'number')) : null);
