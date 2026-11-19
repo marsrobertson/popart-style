@@ -4,6 +4,8 @@
   "name": "popart-mixer",
   "main": "worker/index.js",
   "compatibility_date": "2025-09-01",
+  // The shop's address. moneyfromthefuture.com's DNS is on Cloudflare, so deploy creates this subdomain itself.
+  "routes": [{ "pattern": "popart.moneyfromthefuture.com", "custom_domain": true }],
   "assets": { "directory": ".", "binding": "ASSETS" },
   "kv_namespaces": [
     // Replace with the id printed by: npx wrangler kv namespace create ORDERS
@@ -11,7 +13,7 @@
   ],
   "vars": {
     // Where buyers return after paying. Leave empty to use this Worker's own address.
-    "SITE_URL": ""
+    "SITE_URL": "https://popart.moneyfromthefuture.com"
   },
   "observability": { "enabled": true }
 }

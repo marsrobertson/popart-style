@@ -103,7 +103,7 @@ npx wrangler secret put ADMIN_TOKEN
 npx wrangler deploy
 ```
 
-It prints the address, like `https://popart-mixer.<you>.workers.dev`. Then in the Stripe Dashboard (test mode): **Developers → Webhooks → Add endpoint**, URL `https://<your address>/api/stripe/webhook`, events `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `checkout.session.async_payment_failed`. Copy its signing secret (`whsec_...`):
+The shop then lives at `https://popart.moneyfromthefuture.com` (set in `wrangler.jsonc` under `routes`; Cloudflare creates the subdomain because the domain's DNS is on Cloudflare). Then in the Stripe Dashboard (live mode, https://dashboard.stripe.com/webhooks): **Add destination**, URL `https://popart.moneyfromthefuture.com/api/stripe/webhook`, events `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `checkout.session.async_payment_failed`. Copy its signing secret (`whsec_...`):
 
 ```bash
 npx wrangler secret put STRIPE_WEBHOOK_SECRET
@@ -176,7 +176,7 @@ curl -X POST -H "Authorization: Bearer $ADMIN_TOKEN" https://<your address>/api/
 ## Favicon and link preview
 
 - `favicon.svg` (also inlined in `index.html`), `apple-touch-icon.png` (180×180) and `preview.png` (1200×630, used by `og:image`).
-- Link previews need full addresses. The tags assume `https://marsrobertson.github.io/popart-style/`; change the four lines marked in `<head>` if the page lives elsewhere.
+- Link previews need full addresses. The tags assume `https://popart.moneyfromthefuture.com/`; change the four lines marked in `<head>` if the page lives elsewhere.
 
 ## Where taste data lives
 

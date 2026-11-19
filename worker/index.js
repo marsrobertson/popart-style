@@ -203,7 +203,7 @@ async function printFile(env, ref, token) {
   if (!buf) return new Response('Not found', { status: 404 });
   return new Response(buf, { headers: { 'content-type': 'image/jpeg', 'content-disposition': `inline; filename="${ref}.jpg"`, 'cache-control': 'private, max-age=3600' } });
 }
-const origin = (env, url) => (env.PUBLIC_URL || url.origin).replace(/\/+$/, '');
+const origin = (env, url) => (env.SITE_URL || env.PUBLIC_URL || url.origin).replace(/\/+$/, '');
 
 // ---------- Stripe webhook ----------
 async function webhook(request, env, url, ctx) {
