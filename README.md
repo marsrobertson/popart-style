@@ -145,7 +145,7 @@ The full order includes the delivery address, email, recipe, thumbnail and (Imag
 
 Paid orders can go straight to [Gelato](https://www.gelato.com) to be printed and posted (`worker/printer.js`).
 
-**How it works**: at checkout the page draws the artwork again at print size (150 dpi, at most 4096 px a side: a 70 cm print is about 4096 px and 3 MB) and uploads it with the order, before payment. When Stripe's webhook says "paid", the server sends Gelato the delivery address, the buyer's email and phone, and a private link to that file. Test orders are never sent. A repeated webhook doesn't print twice.
+**How it works**: at checkout the page draws the artwork again at print size at the exact paper size (A3 or A2, 150 dpi: A2 is 2480×3508 px, about 2 MB), the square artwork at the top with an even white border and uploads it with the order, before payment. When Stripe's webhook says "paid", the server sends Gelato the delivery address, the buyer's email and phone, and a private link to that file. Test orders are never sent. A repeated webhook doesn't print twice.
 
 **Start in draft mode** (`orderType: 'draft'` in `worker/shop.js`, the default): each order appears in your Gelato dashboard and waits for you to approve it. Check the first few look right, then switch to `'order'` to print straight away.
 
@@ -155,9 +155,9 @@ Paid orders can go straight to [Gelato](https://www.gelato.com) to be printed an
    ```bash
    npx wrangler secret put GELATO_API_KEY
    ```
-2. Find the product id for each size (posters by default; try `q=300x300`, `q=500x500`, `q=700x700`):
+2. Find the product id for each size (posters by default; try `q=a3` and `q=a2`, and pick the portrait paper you want):
    ```bash
-   curl -H "Authorization: Bearer $ADMIN_TOKEN" "https://<your address>/api/admin/gelato/products?catalog=posters&q=300x300"
+   curl -H "Authorization: Bearer $ADMIN_TOKEN" "https://<your address>/api/admin/gelato/products?catalog=posters&q=a3"
    ```
    Put the ids into `printer.products` in `worker/shop.js`, then `npx wrangler deploy`. Sizes with no id are left for you to send by hand.
 3. Optional, for "Shipped" and tracking on the buyer's Orders list: set a secret path, then add a webhook in the Gelato dashboard (order status updates) pointing at `https://<your address>/api/gelato/webhook/<that secret>`.

@@ -83,7 +83,7 @@ function shopInfo(request, env, url) {
   return json({
     currencies: SHOP.currencies,
     currency: SHOP.currencies.includes(guess) ? guess : SHOP.defaultCurrency,
-    sizes: sizes.map(({ id, label, prices }) => ({ id, label, prices })),
+    sizes: sizes.map(({ id, label, w, h, prices }) => ({ id, label, w, h, prices })),
     shipping: SHOP.shipping,
     printDpi: SHOP.printer.dpi,
     live: !!env.STRIPE_SECRET_KEY,
