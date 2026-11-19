@@ -8,8 +8,8 @@
   "routes": [{ "pattern": "popart.moneyfromthefuture.com", "custom_domain": true }],
   "assets": { "directory": ".", "binding": "ASSETS" },
   "kv_namespaces": [
-    // Replace with the id printed by: npx wrangler kv namespace create ORDERS
-    { "binding": "ORDERS", "id": "REPLACE_WITH_KV_NAMESPACE_ID" }
+    // Your KV namespace (from: npx wrangler kv namespace create ORDERS). Not a secret: useless without your Cloudflare login.
+    { "binding": "ORDERS", "id": "71e37493449e4e6998aa16a74e2bd2ee" }
   ],
   "vars": {
     // Where buyers return after paying. Leave empty to use this Worker's own address.
