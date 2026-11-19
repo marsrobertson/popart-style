@@ -676,7 +676,7 @@ small { color: var(--muted); font-size: 13px; }
     currencies: ['EUR', 'GBP', 'USD'],
     currency: 'EUR', // picked on load: the visitor's own choice, else a guess from their country (server) or time zone
     sizes: [
-      // w × h: the paper in cm. The square artwork sits at the top with an even white border; the space below stays white.
+      // w × h: the paper in cm. The print fills it edge to edge (tiles stretch to the paper's shape).
       { id: 'A3', label: 'A3 · 29.7×42 cm', w: 29.7, h: 42, prices: { EUR: 39, GBP: 35, USD: 45 }, payLink: '' },
       { id: 'A2', label: 'A2 · 42×59.4 cm', w: 42, h: 59.4, prices: { EUR: 59, GBP: 52, USD: 65 }, payLink: '' },
     ],
@@ -769,49 +769,52 @@ small { color: var(--muted); font-size: 13px; }
   }
 
   // ---------- drawing ----------
-  // Paint k×k artworks edge to edge onto canvas c, in whole-pixel tiles so edges stay crisp.
-  function paint(c, sets, k, size) {
-    const n = state.grid, T = Math.floor(size / (k * n)), cand = T * n, total = cand * k;
-    if (c.width !== total) c.width = c.height = total;
+  // Paint k×k artworks edge to edge onto canvas c, in whole-pixel tiles so edges stay crisp. `size` is the width;
+  // `ratio` = tile height / width: 1 on screen, taller for poster paper (A sizes are 1:1.414), where each tile
+  // keeps its design centred and its colour fills the extra height, so the print fills the sheet with no white gap.
+  function paint(c, sets, k, size, ratio = 1) {
+    const n = state.grid, T = Math.floor(size / (k * n)), TH = Math.round(T * ratio);
+    const cw = T * n, ch = TH * n, W = cw * k, H = ch * k;
+    if (c.width !== W || c.height !== H) { c.width = W; c.height = H; }
     withCtx(c.getContext('2d'), () => {
       ctx.fillStyle = WHITE;
-      ctx.fillRect(0, 0, total, total);
-      for (let a = 0; a < k * k; a++) drawArt(sets[a], (a % k) * cand, Math.floor(a / k) * cand, n, T);
+      ctx.fillRect(0, 0, W, H);
+      for (let a = 0; a < k * k; a++) drawArt(sets[a], (a % k) * cw, Math.floor(a / k) * ch, n, T, TH);
     });
   }
   function render() {
     paint(canvas, state.wall === 1 ? [state.tiles] : state.cands, state.wall, SIZE);
     if (!els.zoom.hidden) renderZoom();
   }
-  function drawArt(tiles, ox, oy, n, T) {
+  function drawArt(tiles, ox, oy, n, T, TH = T) {
     ctx.textBaseline = 'alphabetic';
     ctx.textAlign = 'left';
     for (let r = 0; r < n; r++) {
       for (let c = 0; c < n; c++) {
-        const i = r * n + c, t = tiles[i], x = ox + c * T, y = oy + r * T;
+        const i = r * n + c, t = tiles[i], x = ox + c * T, y = oy + r * TH, cy = y + Math.round((TH - T) / 2);
         ctx.save();
-        ctx.beginPath(); ctx.rect(x, y, T, T); ctx.clip();
-        ctx.fillStyle = t.bg; ctx.fillRect(x, y, T, T);
+        ctx.beginPath(); ctx.rect(x, y, T, TH); ctx.clip();
+        ctx.fillStyle = t.bg; ctx.fillRect(x, y, T, TH);
         if (state.mode === 'image') {
-          drawImageTile(x, y, T, t);
-          if (state.texture === 'dots') drawDots(x, y, T, t.bg);
+          drawImageTile(x, y, T, t, TH); // photos are cropped to the tile's shape, not centred in a square
+          if (state.texture === 'dots') drawDots(x, y, T, t.bg, TH);
         } else {
-          if (state.texture === 'dots') drawDots(x, y, T, t.bg);
-          if (state.mode === 'text') drawTextTile(x, y, T, t, i);
-          else drawQrTile(x, y, T, t);
+          if (state.texture === 'dots') drawDots(x, y, T, t.bg, TH);
+          if (state.mode === 'text') drawTextTile(x, cy, T, t, i);
+          else drawQrTile(x, cy, T, t);
         }
         ctx.restore();
       }
     }
-    if (state.texture === 'grain') drawGrain(ox, oy, n * T);
+    if (state.texture === 'grain') drawGrain(ox, oy, n * T, n * TH);
   }
 
-  function drawDots(x, y, T, bg) {
+  function drawDots(x, y, T, bg, H = T) {
     const s = T / 38, rad = s * 0.27;
     ctx.fillStyle = lum(bg) > 0.15 ? 'rgba(0,0,0,0.12)' : 'rgba(255,255,255,0.13)';
     ctx.beginPath();
     let row = 0;
-    for (let yy = s / 2; yy < T + s; yy += s, row++) {
+    for (let yy = s / 2; yy < H + s; yy += s, row++) {
       for (let xx = (row % 2 ? s : s / 2); xx < T + s; xx += s) {
         ctx.moveTo(x + xx + rad, y + yy);
         ctx.arc(x + xx, y + yy, rad, 0, Math.PI * 2);
@@ -822,7 +825,7 @@ small { color: var(--muted); font-size: 13px; }
 
   let grainTile = null;
   const grainPatterns = new WeakMap();
-  function drawGrain(x, y, size) {
+  function drawGrain(x, y, size, h = size) {
     if (!grainTile) {
       const g = document.createElement('canvas');
       g.width = g.height = 256;
@@ -840,7 +843,7 @@ small { color: var(--muted); font-size: 13px; }
     ctx.globalAlpha = 0.1;
     ctx.globalCompositeOperation = 'overlay';
     ctx.fillStyle = grainPatterns.get(ctx);
-    ctx.fillRect(x, y, size, size);
+    ctx.fillRect(x, y, size, h);
     ctx.restore();
   }
 
@@ -923,31 +926,32 @@ small { color: var(--muted); font-size: 13px; }
     return c;
   })();
 
-  // the centre square of the source image, shrunk to `px` pixels a side
-  function squareCrop(px) {
+  // the centre of the source image cut to height/width `ratio` (1 = square), shrunk to `px` pixels wide
+  function squareCrop(px, ratio = 1) {
     const src = srcImg || sample;
     const sw = src.naturalWidth || src.width, sh = src.naturalHeight || src.height;
-    const s = Math.min(sw, sh), sx = (sw - s) / 2, sy = (sh - s) / 2;
+    const cw = Math.min(sw, sh / ratio), chh = cw * ratio, sx = (sw - cw) / 2, sy = (sh - chh) / 2;
+    const ph = Math.round(px * ratio);
     const lo = document.createElement('canvas');
-    lo.width = lo.height = px;
+    lo.width = px; lo.height = ph;
     const lg = lo.getContext('2d');
-    lg.fillStyle = '#fff'; lg.fillRect(0, 0, px, px);
+    lg.fillStyle = '#fff'; lg.fillRect(0, 0, px, ph);
     lg.imageSmoothingQuality = 'high';
-    lg.drawImage(src, sx, sy, s, s, 0, 0, px, px);
+    lg.drawImage(src, sx, sy, cw, chh, 0, 0, px, ph);
     return lo;
   }
-  function getLevels(T) {
+  function getLevels(T, TH = T) {
     const detail = +els.detail.value;
-    const key = `${T}:${detail}:${imgId}`;
+    const key = `${T}x${TH}:${detail}:${imgId}`;
     if (levelCache.key === key) return levelCache.levels;
-    const lo = squareCrop(detail);
+    const lo = squareCrop(detail, TH / T);
     const hi = document.createElement('canvas');
-    hi.width = hi.height = T;
+    hi.width = T; hi.height = TH;
     const hg = hi.getContext('2d', { willReadFrequently: true });
     hg.imageSmoothingEnabled = true; hg.imageSmoothingQuality = 'high';
-    hg.drawImage(lo, 0, 0, T, T);
-    const d = hg.getImageData(0, 0, T, T).data;
-    const N = T * T, L = new Uint8Array(N), hist = new Uint32Array(256);
+    hg.drawImage(lo, 0, 0, T, TH);
+    const d = hg.getImageData(0, 0, T, TH).data;
+    const N = T * TH, L = new Uint8Array(N), hist = new Uint32Array(256);
     for (let k = 0; k < N; k++) {
       const v = (d[4 * k] * 0.299 + d[4 * k + 1] * 0.587 + d[4 * k + 2] * 0.114) | 0;
       L[k] = v; hist[v]++;
@@ -966,11 +970,11 @@ small { color: var(--muted); font-size: 13px; }
   }
 
   const tileCanvas = document.createElement('canvas');
-  function drawImageTile(x, y, T, t) {
-    const L = getLevels(T);
-    if (tileCanvas.width !== T) { tileCanvas.width = tileCanvas.height = T; }
+  function drawImageTile(x, y, T, t, TH = T) {
+    const L = getLevels(T, TH);
+    if (tileCanvas.width !== T || tileCanvas.height !== TH) { tileCanvas.width = T; tileCanvas.height = TH; }
     const tc = tileCanvas.getContext('2d');
-    const img = tc.createImageData(T, T);
+    const img = tc.createImageData(T, TH);
     const px = new Uint32Array(img.data.buffer);
     const tones = [t.ink, t.mid, t.bg].map(h => { const [r, g, b] = rgbOf(h); return ((255 << 24) | (b << 16) | (g << 8) | r) >>> 0; });
     for (let k = 0; k < L.length; k++) px[k] = tones[L[k]];
@@ -1036,8 +1040,27 @@ small { color: var(--muted); font-size: 13px; }
   // ISO 8601 basic format in UTC, e.g. 20261106T143005Z (no colons, which file systems reject)
   const stamp = () => new Date().toISOString().replace(/\.\d+Z$/, 'Z').replace(/[-:]/g, '');
   // Save a canvas as PNG. `tiles` = the artwork it shows (counts toward taste); null for a wall poster.
+  // Free downloads carry a small credit in the bottom-right corner; paid prints never do.
+  const CREDIT = 'POPART.MONEYFROMTHEFUTURE.COM';
+  function credited(src) {
+    const c = document.createElement('canvas');
+    c.width = src.width; c.height = src.height;
+    withCtx(c.getContext('2d'), () => {
+      ctx.drawImage(src, 0, 0);
+      const fs = Math.max(11, Math.round(c.width * 0.014)), pad = Math.round(fs * 0.6);
+      setSmallFont(fs);
+      const sp = fs * 0.06, w = spacedWidth(CREDIT, sp), h = fs * 0.72;
+      const bx = c.width - w - pad * 2, by = c.height - h - pad * 2;
+      ctx.fillStyle = WHITE; ctx.fillRect(bx, by, w + pad * 2, h + pad * 2);
+      ctx.fillStyle = '#121212'; ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'left';
+      drawSpaced(CREDIT, bx + pad, by + pad + h, sp);
+      if ('fontStretch' in ctx) ctx.fontStretch = 'normal';
+    });
+    return c;
+  }
   function saveCanvas(c, tiles, title) {
     if (tiles) recordChoice(tiles);
+    c = credited(c);
     c.toBlob(blob => {
       if (!blob) return;
       const url = URL.createObjectURL(blob);
@@ -1392,6 +1415,7 @@ small { color: var(--muted); font-size: 13px; }
     const c = document.createElement('canvas');
     if (order.kind === 'wall') paint(c, order.cands, order.k, 640); else paint(c, [order.tiles], 1, 480);
     order.thumb = jpegUnder(c, 70000);
+    order.posters = {};
     els.buyImg.src = order.thumb;
     els.buyTitle.textContent = order.kind === 'wall' ? 'Buy this wall as one print' : 'Buy this print';
     els.buyForm.hidden = false;
@@ -1408,8 +1432,10 @@ small { color: var(--muted); font-size: 13px; }
     const p = sheetOf(s), x = 100 - p.w / 2, y = 89 - p.h;
     const box = (id, bx, by, bw, bh) => { const el = $(id); el.setAttribute('x', bx); el.setAttribute('y', by); el.setAttribute('width', bw); el.setAttribute('height', bh); };
     box('room-shadow', x + 1.5, y + 1.5, p.w, p.h); box('room-paper', x, y, p.w, p.h); box('room-frame', x, y, p.w, p.h);
-    box('room-art', x + p.m * p.w, y + p.m * p.w, p.w * (1 - 2 * p.m), p.w * (1 - 2 * p.m));
-    $('room-art').setAttribute('href', buying.thumb);
+    box('room-art', x, y, p.w, p.h);
+    const look = posterThumb(s); // exactly what gets printed, in the paper's shape
+    $('room-art').setAttribute('href', look);
+    els.buyImg.src = look;
     $('room-cap').textContent = s.id === 'test' ? 'Test order: a real small payment to check the shop works. Nothing is printed or posted.' : `To scale: ${s.label} above a 160 cm wide sideboard.`;
     els.buyGo.hidden = !ok;
     els.buyGo.disabled = false;
@@ -1432,9 +1458,9 @@ small { color: var(--muted); font-size: 13px; }
     if (!buying || !canOrder()) throw { code: 'unavailable' };
     const order = {
       ref: buying.ref, kind: buying.kind, size: s.id, sizeLabel: s.label, price: priceOf(s), currency: SHOP.currency, status, email,
-      recipe: recipe(buying), thumb: buying.thumb,
-      // image mode: the same small square the artwork is drawn from, so the print can be remade without asking for the photo
-      source: state.mode === 'image' && srcImg ? jpegUnder(squareCrop(+els.detail.value), 130000) : null,
+      recipe: recipe(buying), thumb: posterThumb(s),
+      // image mode: the same small crop the print is drawn from, so it can be remade without asking for the photo
+      source: state.mode === 'image' && srcImg ? jpegUnder(squareCrop(+els.detail.value, sheetOf(s).h / sheetOf(s).w), 130000) : null,
       at: Date.now(),
     };
     if (shopLive) {
@@ -1633,23 +1659,31 @@ small { color: var(--muted); font-size: 13px; }
   }
   // The print file: the same artwork drawn again at print resolution (SHOP.printDpi, set by the server),
   // capped at 4096 px a side, the largest canvas iPhones can draw. Uploaded before payment, so a paid order always has it.
-  // The paper of a size in cm, and the white border as a share of its width. Square sizes have no border.
+  // The paper of a size in cm. The artwork fills it edge to edge: tiles stretch to the paper's shape (see paint).
   function sheetOf(s) {
     const w = s.w || parseFloat(s.id) || 29.7, h = s.h || w;
-    return { w, h, m: h > w ? 0.06 : 0 };
+    return { w, h };
+  }
+  function posterCanvas(s, width) {
+    const p = sheetOf(s), c = document.createElement('canvas');
+    if (buying.kind === 'wall') paint(c, buying.cands, buying.k, width, p.h / p.w); else paint(c, [buying.tiles], 1, width, p.h / p.w);
+    return c;
+  }
+  function posterThumb(s) {
+    const key = s.w + 'x' + s.h;
+    buying.posters = buying.posters || {};
+    return buying.posters[key] || (buying.posters[key] = jpegUnder(posterCanvas(s, 420), 70000));
   }
   async function uploadPrint(order, s) {
     const p = sheetOf(s), dpi = SHOP.printDpi || 150;
     const scale = Math.min(1, 4096 / (Math.max(p.w, p.h) / 2.54 * dpi));
     const W = Math.round(p.w / 2.54 * dpi * scale), H = Math.round(p.h / 2.54 * dpi * scale);
-    const m = Math.round(p.m * W), side = W - 2 * m;
-    const art = document.createElement('canvas');
-    if (buying.kind === 'wall') paint(art, buying.cands, buying.k, side); else paint(art, [buying.tiles], 1, side);
-    const c = document.createElement('canvas');
+    const art = posterCanvas(s, W);
+    const c = document.createElement('canvas'); // exact paper size in pixels (whole-pixel tiles can fall a few pixels short)
     c.width = W; c.height = H;
     const g = c.getContext('2d');
-    g.fillStyle = '#fff'; g.fillRect(0, 0, W, H);
-    g.drawImage(art, m, m, side, side);
+    g.imageSmoothingQuality = 'high';
+    g.drawImage(art, 0, 0, W, H);
     art.width = art.height = 0;
     const blob = await new Promise(res => c.toBlob(res, 'image/jpeg', 0.92));
     c.width = c.height = 0; // let the browser free the memory

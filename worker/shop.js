@@ -5,8 +5,8 @@ export const SHOP = {
   currencies: ['EUR', 'GBP', 'USD'],
   defaultCurrency: 'EUR',
   productName: 'Pop Art Mixer print',
-  // Standard poster paper. w × h in cm: the page draws the square artwork at the top with an even white border
-  // (6% of the width) and leaves the space below white, and makes the print file at exactly this paper size.
+  // Standard poster paper, w × h in cm. The print fills the sheet edge to edge: each tile stretches to the paper's
+  // shape with its design centred, and the print file is made at exactly this size.
   sizes: [
     { id: 'A3', label: 'A3 · 29.7×42 cm', w: 29.7, h: 42, prices: { EUR: 39, GBP: 35, USD: 45 } },
     { id: 'A2', label: 'A2 · 42×59.4 cm', w: 42, h: 59.4, prices: { EUR: 59, GBP: 52, USD: 65 } },
