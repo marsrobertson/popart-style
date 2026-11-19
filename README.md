@@ -145,7 +145,7 @@ The full order includes the delivery address, email, recipe, thumbnail and (Imag
 
 Paid orders can go straight to [Gelato](https://www.gelato.com) to be printed and posted (`worker/printer.js`).
 
-**How it works**: at checkout the page draws the artwork again at print size at the exact paper size (A3 or A2, 150 dpi: A2 is 2480×3508 px, about 2 MB), edge to edge: each tile stretches to the paper's shape and keeps its design centred and uploads it with the order, before payment. When Stripe's webhook says "paid", the server sends Gelato the delivery address, the buyer's email and phone, and a private link to that file. Test orders are never sent. A repeated webhook doesn't print twice.
+**How it works**: at checkout the page draws the artwork again at the exact paper size (A3 or A2 at 150 dpi; A2 is 2480×3508 px, about 1 MB) and uploads it with the order, before payment. The print fills the sheet edge to edge: each tile stretches to the paper's shape and keeps its design centred. When Stripe's webhook says "paid", the server sends Gelato the delivery address, the buyer's email and phone, and a private link to that file. Test orders are never sent. A repeated webhook doesn't print twice.
 
 **Start in draft mode** (`orderType: 'draft'` in `worker/shop.js`, the default): each order appears in your Gelato dashboard and waits for you to approve it. Check the first few look right, then switch to `'order'` to print straight away.
 
