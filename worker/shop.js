@@ -22,9 +22,12 @@ export const SHOP = {
   countryCurrency: { GB: 'GBP', GG: 'GBP', JE: 'GBP', IM: 'GBP', US: 'USD', CA: 'USD', AU: 'USD', NZ: 'USD' },
   // Print on demand with Gelato (worker/printer.js). Needs the GELATO_API_KEY secret.
   printer: {
-    // Gelato product id per size (portrait poster, your paper choice). Find them with
-    // /api/admin/gelato/products?catalog=posters&q=a3 (see README).
-    products: { A3: '', A2: '' },
+    // Gelato product id per size: portrait poster, Premium matte paper (200 gsm uncoated). Built from Gelato's
+    // published naming pattern; check they exist with GET /api/admin/gelato/check (see README).
+    products: {
+      A3: 'flat_product_pf_a3_pt_200-gsm-uncoated_cl_4-0_ct_none_prt_none_sft_none_set_none_ver',
+      A2: 'flat_product_pf_a2_pt_200-gsm-uncoated_cl_4-0_ct_none_prt_none_sft_none_set_none_ver',
+    },
     // 'draft': each paid order waits in your Gelato dashboard until you press approve (start here).
     // 'order': printed and posted straight away.
     orderType: 'draft',

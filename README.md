@@ -155,11 +155,11 @@ Paid orders can go straight to [Gelato](https://www.gelato.com) to be printed an
    ```bash
    npx wrangler secret put GELATO_API_KEY
    ```
-2. Find the product id for each size (posters by default; try `q=a3` and `q=a2`, and pick the portrait paper you want):
+2. Check the product ids in `worker/shop.js` (A3 and A2, Premium matte 200 gsm, portrait) exist at Gelato, and see what each costs to print:
    ```bash
-   curl -H "Authorization: Bearer $ADMIN_TOKEN" "https://<your address>/api/admin/gelato/products?catalog=posters&q=a3"
+   curl -H "Authorization: Bearer $ADMIN_TOKEN" "https://popart.moneyfromthefuture.com/api/admin/gelato/check?country=GB"
    ```
-   Put the ids into `printer.products` in `worker/shop.js`, then `npx wrangler deploy`. Sizes with no id are left for you to send by hand.
+   `exists: true` with prices means ready. If an id is unknown, `candidates` lists real ids to pick from: put one into `printer.products`, then `npx wrangler deploy`. (`/api/admin/gelato/products?catalog=posters&q=a3` lists the whole catalogue.)
 3. Optional, for "Shipped" and tracking on the buyer's Orders list: set a secret path, then add a webhook in the Gelato dashboard (order status updates) pointing at `https://<your address>/api/gelato/webhook/<that secret>`.
    ```bash
    npx wrangler secret put GELATO_WEBHOOK_KEY

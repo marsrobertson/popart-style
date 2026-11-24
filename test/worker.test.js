@@ -17,6 +17,15 @@ const sessions = new Map(); let calls = [];
 const gelato = [];
 globalThis.fetch = async (url, init = {}) => {
   calls.push({ url, init });
+  if (String(url).startsWith('https://product.gelatoapis.com/')) { // fake Gelato catalogue
+    assert.equal(init.headers['x-api-key'], 'gelato-key');
+    const path = decodeURIComponent(new URL(url).pathname);
+    if (path.endsWith('products:search')) return new Response(JSON.stringify({ products: [
+      { productUid: 'flat_product_pf_a2_pt_200-gsm-uncoated_cl_4-0_ver' }, { productUid: 'flat_product_pf_a2_pt_200-gsm-uncoated_cl_4-0_hor' }, { productUid: 'flat_product_pf_a4_pt_x_ver' }] }));
+    const known = path.includes('flat_product_pf_a3_');
+    if (path.endsWith('/prices')) return new Response(JSON.stringify([{ quantity: 1, price: 7.1, currency: 'GBP' }, { quantity: 5, price: 6.5, currency: 'GBP' }]));
+    return new Response(JSON.stringify(known ? { productUid: 'x' } : { message: 'not found' }), { status: known ? 200 : 404 });
+  }
   if (String(url).startsWith('https://order.gelatoapis.com/')) {
     assert.equal(init.headers['x-api-key'], 'gelato-key');
     gelato.push(JSON.parse(init.body)); return new Response(JSON.stringify({ id: 'gel_' + gelato.length }), { status: 200 });
@@ -189,6 +198,13 @@ await t('admin routes need the token', async () => {
   assert.equal((await post('/api/admin/order/' + order.ref, { status: 'lost' }, auth)).status, 400);
   const u = await (await post('/api/admin/order/' + order.ref, { status: 'shipped', tracking: 'RM123GB' }, auth)).json();
   assert.equal(u.status, 'shipped'); assert.equal(u.tracking, 'RM123GB');
+});
+await t('Gelato check: known ids get prices, unknown ones get candidates', async () => {
+  const auth = { authorization: 'Bearer ' + env.ADMIN_TOKEN };
+  const c = await (await call('/api/admin/gelato/check?country=GB', { headers: auth })).json();
+  assert.equal(c.sizes.A3.exists, true); assert.deepEqual(c.sizes.A3.prices, [{ quantity: 1, price: 7.1, currency: 'GBP' }]);
+  assert.equal(c.sizes.A2.exists, false); assert.deepEqual(c.sizes.A2.candidates, ['flat_product_pf_a2_pt_200-gsm-uncoated_cl_4-0_ver']);
+  assert.equal((await call('/api/admin/gelato/check')).status, 401);
 });
 await t('payments off without a key', async () => {
   const saved = env.STRIPE_SECRET_KEY; delete env.STRIPE_SECRET_KEY;

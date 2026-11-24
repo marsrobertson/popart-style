@@ -79,6 +79,35 @@ export async function gelatoWebhook(request, env, key, { loadOrder, saveOrder, s
   return { status: 200 };
 }
 
+// Admin check: does each size's product id exist at Gelato, and what does it cost to print (before delivery)?
+// If an id is unknown, lists similar ids from the posters catalogue to pick from.
+export async function gelatoCheck(env, url) {
+  if (!env.GELATO_API_KEY) return { error: 'Set GELATO_API_KEY first: npx wrangler secret put GELATO_API_KEY' };
+  const country = (url.searchParams.get('country') || 'GB').replace(/[^A-Z]/gi, '').toUpperCase().slice(0, 2);
+  const h = { 'x-api-key': env.GELATO_API_KEY };
+  const get = async u => { const r = await fetch(u, { headers: h }); return { ok: r.ok, status: r.status, body: await r.json().catch(() => null) }; };
+  const out = { country, sizes: {} };
+  let catalogue = null;
+  for (const [size, uid] of Object.entries(SHOP.printer.products)) {
+    const res = { productUid: uid || null };
+    if (uid) {
+      const p = await get(`https://product.gelatoapis.com/v3/products/${encodeURIComponent(uid)}`);
+      res.exists = p.ok; res.status = p.status;
+      if (p.ok) {
+        const pr = await get(`https://product.gelatoapis.com/v3/products/${encodeURIComponent(uid)}/prices?country=${country}`);
+        res.prices = pr.ok ? (Array.isArray(pr.body) ? pr.body.filter(x => x.quantity === 1) : pr.body) : `prices: Gelato said ${pr.status}`;
+      }
+    }
+    if (!res.exists) {
+      if (!catalogue) catalogue = (await gelatoProducts(env, new URL('https://x/?catalog=posters'))).productUids || [];
+      const tag = `pf_${size.toLowerCase()}_`;
+      res.candidates = catalogue.filter(u => u.includes(tag) && /_ver$/.test(u)).slice(0, 30);
+    }
+    out.sizes[size] = res;
+  }
+  return out;
+}
+
 // Admin helper: find Gelato product ids, e.g. ?catalog=posters&q=300x300
 export async function gelatoProducts(env, url) {
   if (!env.GELATO_API_KEY) return { error: 'Set GELATO_API_KEY first' };

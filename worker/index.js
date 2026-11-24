@@ -12,7 +12,8 @@
 //   GET  /api/admin/order/<ref>     one order, everything  (same)
 //   POST /api/admin/order/<ref>     {"status": "printing"} (same)
 //   POST /api/admin/order/<ref>/print  send (or resend) a paid order to Gelato (same)
-//   GET  /api/admin/gelato/products?catalog=posters&q=300x300  find Gelato product ids (same)
+//   GET  /api/admin/gelato/products?catalog=posters&q=a3  find Gelato product ids (same)
+//   GET  /api/admin/gelato/check?country=GB  do the configured product ids exist, and their print prices (same)
 //
 // Secrets (set with `npx wrangler secret put NAME`, never in a file):
 //   STRIPE_SECRET_KEY      sk_test_... / sk_live_... or a restricted key rk_... with Checkout Sessions write access
@@ -23,7 +24,7 @@
 // Binding: ORDERS (a KV namespace). Optional var: SITE_URL (where buyers return after paying; defaults to this Worker's own address).
 
 import { SHOP } from './shop.js';
-import { sendToPrinter, gelatoWebhook, gelatoProducts } from './printer.js';
+import { sendToPrinter, gelatoWebhook, gelatoProducts, gelatoCheck } from './printer.js';
 
 const REF_ABC = '23456789ABCDEFGHJKMNPQRSTUVWXYZ';
 const REF_RE = /^PM-[2-9A-HJKMNP-Z]{6}$/;
@@ -71,6 +72,7 @@ async function route(request, env, url, ctx) {
     if ((r = p.match(/^\/api\/admin\/order\/(PM-[A-Z0-9]{6})\/print$/)) && m === 'POST')
       return json(await sendToPrinter(env, r[1], origin(env, url), { loadOrder, saveOrder }, true));
     if (p === '/api/admin/gelato/products' && m === 'GET') return json(await gelatoProducts(env, url));
+    if (p === '/api/admin/gelato/check' && m === 'GET') return json(await gelatoCheck(env, url));
   }
   return json({ error: 'not_found' }, 404);
 }
